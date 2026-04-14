@@ -38,7 +38,7 @@ export default function LoginPage() {
       />
 
       {/* Dark overlay */}
-      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)" }} />
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", pointerEvents: "none" }} />
 
       {/* Top bar */}
       <div style={{

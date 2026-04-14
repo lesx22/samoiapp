@@ -83,7 +83,7 @@ function TopNav({ seeds, urgentCount, session }) {
         <div style={{ width: "1px", height: 20, background: "var(--color-border)", margin: "0 var(--space-xs)" }} />
         <span style={{ fontSize: "var(--text-nav)", color: "var(--color-text-muted)", fontWeight: 500 }}>{userLabel}</span>
         <button
-          onClick={() => supabase.auth.signOut()}
+          onClick={() => supabase.auth.signOut().then(() => window.location.replace("/"))}
           style={{ background: "none", border: "none", fontSize: "var(--text-nav)", color: "var(--color-text-muted)", cursor: "pointer", padding: "var(--space-xs) var(--space-sm)", minHeight: "auto" }}
         >
           Sign out
