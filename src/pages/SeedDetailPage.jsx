@@ -10,7 +10,11 @@ const DETAIL_TABS = ["Overview", "Today", "Diary", "Chat"];
 export default function SeedDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getSeed, removeSeed, assignZone, addDiaryEntry, getDiaryEntries } = useSeedsContext();
+  const { getSeed, removeSeed, assignZone, addDiaryEntry, getDiaryEntries, loadDiaryEntries } = useSeedsContext();
+
+  useEffect(() => {
+    if (id) loadDiaryEntries(id);
+  }, [id]);
   const [activeTab, setActiveTab] = useState(0);
   const seed = getSeed(id);
 

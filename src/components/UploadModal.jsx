@@ -208,22 +208,29 @@ export default function UploadModal({ isOpen, onClose }) {
     onClose();
   }
 
-  function handleZoneSelect(zoneId) {
+  async function handleZoneSelect(zoneId) {
     if (!zoneData) return;
     const { displayName, inputs } = zoneData;
     const zone = zoneId ? { zoneId } : {};
     if (zoneId) setLastUsedZoneId(zoneId);
 
-    const seedId = addSeed({ name: displayName, emoji: "🌱", loading: true, ...zone });
+    let seedId;
+    try {
+      seedId = await addSeed({ name: displayName, emoji: "🌱", loading: true, ...zone });
+    } catch (err) {
+      setLocalError(`Failed to save plant: ${err.message}`);
+      return;
+    }
     handleClose();
 
-    resolveQuickData(inputs)
-      .then(quickData => {
-        updateSeed(seedId, { ...quickData, loading: false, enriching: true, ...zone });
-        return resolveSeedData(inputs);
-      })
-      .then(fullData => updateSeed(seedId, { ...fullData, enriching: false, ...zone }))
-      .catch(err => updateSeed(seedId, { loading: false, enriching: false, fetchError: err.message }));
+    try {
+      const quickData = await resolveQuickData(inputs);
+      updateSeed(seedId, { ...quickData, loading: false, enriching: true, ...zone });
+      const fullData = await resolveSeedData(inputs);
+      updateSeed(seedId, { ...fullData, enriching: false, ...zone });
+    } catch (err) {
+      updateSeed(seedId, { loading: false, enriching: false, fetchError: err.message });
+    }
   }
 
   function handleSubmit() {
@@ -260,7 +267,7 @@ export default function UploadModal({ isOpen, onClose }) {
     setBulkItems(prev => prev.filter(i => i._id !== id));
   }
 
-  function handleBulkImport() {
+  async function handleBulkImport() {
     const validItems = bulkItems.filter(i => !i.error);
     if (validItems.length === 0) return;
 
@@ -272,7 +279,13 @@ export default function UploadModal({ isOpen, onClose }) {
       ...(item.zoneId ? { zoneId: item.zoneId } : {}),
     }));
 
-    const seedIds = addSeeds(stubs);
+    let seedIds;
+    try {
+      seedIds = await addSeeds(stubs);
+    } catch (err) {
+      setBulkError(`Failed to save plants: ${err.message}`);
+      return;
+    }
     handleClose();
     navigate("/seeds");
 
@@ -346,7 +359,10 @@ export default function UploadModal({ isOpen, onClose }) {
                   </button>
                 ))}
               </div>
-              <button className="btn-ghost" onClick={handleClose} style={{ width: "100%", justifyContent: "center", display: "flex" }}>Skip for now</button>
+              {error && (
+                <p style={{ color: "var(--color-error)", fontSize: "var(--text-small)", textAlign: "center", marginBottom: "var(--space-md)" }}>{error}</p>
+              )}
+              <button className="btn-ghost" onClick={() => handleZoneSelect(null)} style={{ width: "100%", justifyContent: "center", display: "flex" }}>Skip for now</button>
             </div>
           )}
 
