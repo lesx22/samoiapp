@@ -1,8 +1,6 @@
 # Jardin Planner
 
-A family garden management app for Grand Samoï, our 5-acre estate in Condé-en-Normandy, France.
-
-Built for a family of 5-6 people to coordinate planting, track hundreds of plants across the property, and tag-team garden work across different visits throughout the season.
+Built for gardeners of all scales — from amateur home growers to professional farmers managing large estates. Starting with Grand Samoï, our 5-acre property in Condé-en-Normandy, France, the goal is a tool that works for anyone growing anything, anywhere in the world.
 
 ---
 
