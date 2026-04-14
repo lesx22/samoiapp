@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getZone, ZONES } from "../data/zones";
 import { useSeedsContext } from "../context/SeedsContext";
 import { getActiveTasks, MONTHS, TODAY_M } from "../data/garden";
 import { TaskRow } from "./TodayPage";
@@ -10,9 +9,9 @@ const ZONE_TABS = ["Seeds", "Today", "Calendar"];
 export default function ZoneDetailPage() {
   const { zoneId } = useParams();
   const navigate = useNavigate();
-  const zone = getZone(zoneId);
-  const { getSeedsByZone, toggleTask, isTaskDone } = useSeedsContext();
+  const { getZone, getSeedsByZone, toggleTask, isTaskDone } = useSeedsContext();
   const [activeTab, setActiveTab] = useState(0);
+  const zone = getZone(zoneId);
 
   if (!zone) {
     return (

@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SeedsProvider, useSeedsContext } from "./context/SeedsContext";
+import { supabase } from "./lib/supabase";
 import Nav from "./components/Nav";
 import UploadModal from "./components/UploadModal";
+import LoginPage from "./pages/LoginPage";
 import HomePage from "./pages/HomePage";
 import SeedsPage from "./pages/SeedsPage";
 import SeedDetailPage from "./pages/SeedDetailPage";
@@ -12,7 +14,7 @@ import ZonePage from "./pages/ZonePage";
 import GardenPage from "./pages/GardenPage";
 import ZoneDetailPage from "./pages/ZoneDetailPage";
 
-function AppShell() {
+function AppShell({ session }) {
   const [modalOpen, setModalOpen] = useState(false);
   const { initializing, error } = useSeedsContext();
 
@@ -37,7 +39,7 @@ function AppShell() {
 
   return (
     <>
-      <Nav />
+      <Nav session={session} />
       <Routes>
         <Route path="/"            element={<HomePage   onUpload={() => setModalOpen(true)} />} />
         <Route path="/seeds"       element={<SeedsPage  onUpload={() => setModalOpen(true)} />} />
@@ -54,10 +56,39 @@ function AppShell() {
 }
 
 export default function App() {
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      setAuthLoading(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (authLoading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <div style={{ fontFamily: "var(--font-serif)", fontSize: "1.5rem", fontWeight: 700, color: "var(--color-text)" }}>
+          Jardin<span style={{ color: "var(--color-green)" }}>·</span>Planner
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <LoginPage />;
+  }
+
   return (
     <BrowserRouter>
       <SeedsProvider>
-        <AppShell />
+        <AppShell session={session} />
       </SeedsProvider>
     </BrowserRouter>
   );

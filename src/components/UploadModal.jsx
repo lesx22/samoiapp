@@ -2,7 +2,12 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
 import { fromImage, fromText, fromURL, fromURLQuick, fromImageQuick, fromGoogleDoc, groupPhotos } from "../lib/claude";
-import { ZONES } from "../data/zones";
+import { supabase } from "../lib/supabase";
+
+function inferProvider(url) {
+  try { return new URL(url).hostname.replace(/^www\./, ""); }
+  catch { return null; }
+}
 
 // Approximate dot colours for the bulk review list
 const COLOR_DOT = {
@@ -44,15 +49,9 @@ async function fetchDocText(googleUrl) {
   return response.text();
 }
 
-function fuzzyMatch(name, catalog) {
-  const q = name.toLowerCase();
-  const exact = catalog.find(e => e.name.toLowerCase() === q);
-  if (exact) return exact;
-  return catalog.find(e => e.name.toLowerCase().includes(q) || q.includes(e.name.toLowerCase())) || null;
-}
 
 export default function UploadModal({ isOpen, onClose }) {
-  const { addSeed, addSeeds, updateSeed, seeds } = useSeedsContext();
+  const { addSeed, addSeeds, updateSeed, seeds, zones } = useSeedsContext();
   const navigate = useNavigate();
 
   // Input step state
@@ -61,8 +60,7 @@ export default function UploadModal({ isOpen, onClose }) {
   const [nameVal, setNameVal] = useState("");
   const [selectedCatalogEntry, setSelectedCatalogEntry] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
-  const [catalog, setCatalog] = useState([]);
-  const [catalogLoaded, setCatalogLoaded] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [error, setLocalError] = useState(null);
 
   // Step machine: "input" | "zone" | "bulkReview"
@@ -85,26 +83,22 @@ export default function UploadModal({ isOpen, onClose }) {
   const isGoogleDocUrl = urlVal.trim().includes("docs.google.com/document") || urlVal.trim().includes("docs.google.com/spreadsheets");
   const isBulkImport = isGoogleDocUrl;
 
-  // Load seed catalogs when modal first opens (main + Willemse, in parallel)
+  // Autocomplete: query Supabase live as user types
   useEffect(() => {
-    if (isOpen && !catalogLoaded) {
-      Promise.all([
-        fetch("/seed-catalog.json").then(r => r.json()).catch(() => []),
-        fetch("/willemse-catalog.json").then(r => r.json()).catch(() => []),
-      ]).then(([main, willemse]) => {
-        setCatalog([...main, ...willemse]);
-        setCatalogLoaded(true);
+    if (!nameVal.trim() || nameVal.length < 2) { setSuggestions([]); setHighlightedIndex(-1); return; }
+    // Already selected — don't re-query
+    if (selectedCatalogEntry && nameVal === selectedCatalogEntry.name) { setSuggestions([]); return; }
+    if (selectedCatalogEntry) setSelectedCatalogEntry(null);
+    let cancelled = false;
+    supabase.from("catalog_entries")
+      .select("name, category, provider, url")
+      .ilike("name", `%${nameVal}%`)
+      .limit(6)
+      .then(({ data }) => {
+        if (!cancelled) { setSuggestions(data || []); setHighlightedIndex(-1); }
       });
-    }
-  }, [isOpen, catalogLoaded]);
-
-  // Autocomplete as user types
-  useEffect(() => {
-    if (!nameVal.trim() || nameVal.length < 2) { setSuggestions([]); return; }
-    if (selectedCatalogEntry && nameVal !== selectedCatalogEntry.name) setSelectedCatalogEntry(null);
-    const q = nameVal.toLowerCase();
-    setSuggestions(catalog.filter(s => s.name.toLowerCase().includes(q)).slice(0, 6));
-  }, [nameVal, catalog]);
+    return () => { cancelled = true; };
+  }, [nameVal]);
 
   // Trigger bulk parse/group when step becomes bulkReview
   useEffect(() => {
@@ -138,7 +132,7 @@ export default function UploadModal({ isOpen, onClose }) {
               height: null,
               photos: group.indices.map(idx => b64Photos[idx]),
               quickData,
-              catalogMatch: fuzzyMatch(name, catalog),
+              catalogMatch: null,
               isDuplicate: existingNames.has(name.toLowerCase()),
               zoneId: lastUsedZoneId,
               error: !quickData.name,
@@ -165,7 +159,7 @@ export default function UploadModal({ isOpen, onClose }) {
           setBulkItems(limited.map((item, i) => ({
             ...item,
             _id: `bulk-${i}`,
-            catalogMatch: item.error ? null : fuzzyMatch(item.name, catalog),
+            catalogMatch: null,
             isDuplicate: item.error ? false : existingNames.has(item.name.toLowerCase()),
             zoneId: lastUsedZoneId,
           })));
@@ -186,6 +180,13 @@ export default function UploadModal({ isOpen, onClose }) {
       URL.revokeObjectURL(prev[index].preview);
       return prev.filter((_, i) => i !== index);
     });
+  }
+
+  function selectSuggestion(s) {
+    setNameVal(s.name);
+    setSelectedCatalogEntry(s);
+    setSuggestions([]);
+    setHighlightedIndex(-1);
   }
 
   function handleClose() {
@@ -226,6 +227,18 @@ export default function UploadModal({ isOpen, onClose }) {
     try {
       const quickData = await resolveQuickData(inputs);
       updateSeed(seedId, { ...quickData, loading: false, enriching: true, ...zone });
+
+      // Auto-contribute to catalog if this URL isn't already there
+      if (inputs.urlVal && !inputs.selectedCatalogEntry && quickData.name) {
+        supabase.from("catalog_entries").insert({
+          name: quickData.name,
+          category: quickData.category || null,
+          provider: inferProvider(inputs.urlVal),
+          url: inputs.urlVal,
+          verified: false,
+        }).then(); // fire and forget — ignore errors (e.g. duplicate URL)
+      }
+
       const fullData = await resolveSeedData(inputs);
       updateSeed(seedId, { ...fullData, enriching: false, ...zone });
     } catch (err) {
@@ -320,7 +333,7 @@ export default function UploadModal({ isOpen, onClose }) {
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--color-overlay)", display: "flex", alignItems: "flex-end", justifyContent: "center", padding: "var(--space-md)" }}
+      style={{ position: "fixed", inset: 0, zIndex: 200, background: "var(--color-overlay)", display: "flex", alignItems: "center", justifyContent: "center", padding: "var(--space-md)" }}
       onClick={e => e.target === e.currentTarget && handleClose()}
     >
       <div style={{ background: "var(--color-bg)", borderRadius: "var(--radius-lg) var(--radius-lg) var(--radius-md) var(--radius-md)", width: "100%", maxWidth: "var(--max-width)", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 -8px 40px rgba(0,0,0,0.15)" }}>
@@ -343,7 +356,7 @@ export default function UploadModal({ isOpen, onClose }) {
                 <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)", margin: 0 }}>Which garden zone does it belong to?</p>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)", marginBottom: "var(--space-xl)" }}>
-                {ZONES.map(zone => (
+                {zones.map(zone => (
                   <button
                     key={zone.id}
                     onClick={() => handleZoneSelect(zone.id)}
@@ -373,7 +386,7 @@ export default function UploadModal({ isOpen, onClose }) {
               error={bulkError}
               items={bulkItems}
               truncated={bulkTruncated}
-              zones={ZONES}
+              zones={zones}
               onUpdateItem={updateBulkItem}
               onRemoveItem={removeBulkItem}
               onBack={() => setStep("input")}
@@ -389,7 +402,20 @@ export default function UploadModal({ isOpen, onClose }) {
                 Search by plant name
                 <span style={{ fontSize: "var(--text-nav)", color: "var(--color-text-muted)", fontWeight: 400 }}>Optional</span>
               </label>
-              <input type="text" value={nameVal} onChange={e => setNameVal(e.target.value)} placeholder="e.g. Sun Gold Tomato, Genovese Basil..." autoComplete="off" />
+              <input
+                type="text"
+                value={nameVal}
+                onChange={e => setNameVal(e.target.value)}
+                placeholder="e.g. Sun Gold Tomato, Genovese Basil..."
+                autoComplete="off"
+                onKeyDown={e => {
+                  if (!suggestions.length) return;
+                  if (e.key === "ArrowDown") { e.preventDefault(); setHighlightedIndex(i => Math.min(i + 1, suggestions.length - 1)); }
+                  else if (e.key === "ArrowUp") { e.preventDefault(); setHighlightedIndex(i => Math.max(i - 1, 0)); }
+                  else if (e.key === "Enter" && highlightedIndex >= 0) { e.preventDefault(); selectSuggestion(suggestions[highlightedIndex]); }
+                  else if (e.key === "Escape") { setSuggestions([]); setHighlightedIndex(-1); }
+                }}
+              />
               {suggestions.length > 0 && (
                 <div style={{
                   position: "absolute",
@@ -407,10 +433,10 @@ export default function UploadModal({ isOpen, onClose }) {
                   {suggestions.map((s, i) => (
                     <button
                       key={i}
-                      onClick={() => { setNameVal(s.name); setSelectedCatalogEntry(s); setSuggestions([]); }}
-                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "var(--space-sm) var(--space-md)", background: "none", border: "none", borderBottom: i < suggestions.length - 1 ? "1px solid var(--color-border)" : "none", cursor: "pointer", textAlign: "left", minHeight: "var(--touch-target)", borderRadius: 0 }}
-                      onMouseEnter={e => e.currentTarget.style.background = "var(--color-green-pale)"}
-                      onMouseLeave={e => e.currentTarget.style.background = "none"}
+                      onClick={() => selectSuggestion(s)}
+                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "var(--space-sm) var(--space-md)", background: i === highlightedIndex ? "var(--color-green-pale)" : "none", border: "none", borderBottom: i < suggestions.length - 1 ? "1px solid var(--color-border)" : "none", cursor: "pointer", textAlign: "left", minHeight: "var(--touch-target)", borderRadius: 0 }}
+                      onMouseEnter={() => setHighlightedIndex(i)}
+                      onMouseLeave={() => setHighlightedIndex(-1)}
                     >
                       <span style={{ fontSize: "var(--text-body)", color: "var(--color-text)", fontWeight: 500 }}>{s.name}</span>
                       <span style={{ fontSize: "var(--text-nav)", color: "var(--color-text-muted)" }}>{s.provider}</span>

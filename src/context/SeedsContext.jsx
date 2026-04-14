@@ -99,6 +99,7 @@ function toDb(seed) {
 
 export function SeedsProvider({ children }) {
   const [seeds, setSeeds] = useState([]);
+  const [zones, setZones] = useState([]);
   const [diary, setDiary] = useState({});
   const [gardenId, setGardenId] = useState(null);
   const [initializing, setInitializing] = useState(true);
@@ -107,7 +108,7 @@ export function SeedsProvider({ children }) {
   const [error, setError] = useState(null);
   const [completedTasks, setCompletedTasks] = useState(new Set());
 
-  // Load garden, plants, and task completions on mount
+  // Load garden, zones, plants, and task completions on mount
   useEffect(() => {
     async function init() {
       const { data: garden, error: gErr } = await supabase
@@ -123,21 +124,31 @@ export function SeedsProvider({ children }) {
       }
       setGardenId(garden.id);
 
-      const { data: plants, error: pErr } = await supabase
-        .from("plants")
-        .select("*")
-        .eq("garden_id", garden.id)
-        .order("created_at", { ascending: false });
+      const [
+        { data: zonesData },
+        { data: plants, error: pErr },
+        { data: completions },
+      ] = await Promise.all([
+        supabase.from("zones").select("*").eq("garden_id", garden.id),
+        supabase.from("plants").select("*").eq("garden_id", garden.id).order("created_at", { ascending: false }),
+        supabase.from("task_completions").select("plant_id, task_type"),
+      ]);
+
+      setZones((zonesData || []).map(r => ({
+        id: r.id,
+        name: r.name,
+        emoji: r.emoji ?? null,
+        description: r.description ?? null,
+        color: r.color ?? null,
+        borderColor: r.border_color ?? null,
+        hotspot: r.hotspot ?? {},
+      })));
 
       if (pErr) {
         setError(pErr.message);
       } else {
         setSeeds((plants || []).map(toApp));
       }
-
-      const { data: completions } = await supabase
-        .from("task_completions")
-        .select("plant_id, task_type");
 
       if (completions) {
         setCompletedTasks(new Set(completions.map(c => `${c.plant_id}-${c.task_type}`)));
@@ -203,6 +214,10 @@ export function SeedsProvider({ children }) {
 
   function getSeedsByZone(zoneId) {
     return seeds.filter(s => s.zoneId === zoneId);
+  }
+
+  function getZone(id) {
+    return zones.find(z => z.id === id) ?? null;
   }
 
   // ── Diary ───────────────────────────────────────────────────────────────────
@@ -286,10 +301,10 @@ export function SeedsProvider({ children }) {
 
   return (
     <SeedsContext.Provider value={{
-      seeds, loading, loadMsg, error, initializing, gardenId,
+      seeds, zones, loading, loadMsg, error, initializing, gardenId,
       setLoading, setLoadMsg, setError,
       addSeed, addSeeds, updateSeed, removeSeed, getSeed,
-      assignZone, getSeedsByZone,
+      assignZone, getSeedsByZone, getZone,
       loadDiaryEntries, addDiaryEntry, getDiaryEntries,
       toggleTask, isTaskDone,
     }}>

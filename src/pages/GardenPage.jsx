@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ZONES } from "../data/zones";
 import { useSeedsContext } from "../context/SeedsContext";
 
 function loadLS(key, def) {
@@ -20,7 +19,7 @@ const CORNERS = [
 
 export default function GardenPage() {
   const navigate = useNavigate();
-  const { getSeedsByZone } = useSeedsContext();
+  const { zones, getSeedsByZone } = useSeedsContext();
   const [hoveredZone, setHoveredZone] = useState(null);
   const [editMode, setEditMode] = useState(false);
 
@@ -209,7 +208,7 @@ export default function GardenPage() {
           />
 
           {/* Zone overlays */}
-          {ZONES.map(zone => {
+          {zones.map(zone => {
             const hs = getHotspot(zone);
             const count = getSeedsByZone(zone.id).length;
             const isHovered = hoveredZone === zone.id;
@@ -370,7 +369,7 @@ export default function GardenPage() {
       {/* Zone list */}
       <h2 style={{ marginBottom: "var(--space-lg)" }}>Zones</h2>
       <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
-        {ZONES.map(zone => {
+        {zones.map(zone => {
           const seeds = getSeedsByZone(zone.id);
           return (
             <div

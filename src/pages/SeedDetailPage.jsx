@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
 import { badge, MONTHS, TODAY_M } from "../data/garden";
 import { chatAboutPlant } from "../lib/claude";
-import { ZONES, getZone } from "../data/zones";
 
 const DETAIL_TABS = ["Overview", "Today", "Diary", "Chat"];
 
@@ -169,6 +168,7 @@ export default function SeedDetailPage() {
 // ─── Overview Tab ─────────────────────────────────────────────────────────────
 
 function OverviewTab({ seed, assignZone }) {
+  const { zones, getZone } = useSeedsContext();
   const [showZonePicker, setShowZonePicker] = useState(false);
   const currentZone = seed.zoneId ? getZone(seed.zoneId) : null;
 
@@ -201,7 +201,7 @@ function OverviewTab({ seed, assignZone }) {
 
         {showZonePicker && (
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-xs)" }}>
-            {ZONES.map(zone => (
+            {zones.map(zone => (
               <button
                 key={zone.id}
                 onClick={() => { assignZone(seed.id, zone.id); setShowZonePicker(false); }}

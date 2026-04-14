@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
 import { badge, getActiveTasks } from "../data/garden";
+import { supabase } from "../lib/supabase";
 
 const NAV_ITEMS = [
   { to: "/",         label: "Home",     icon: "⌂" },
@@ -11,7 +12,7 @@ const NAV_ITEMS = [
   { to: "/zone",     label: "Zone",     icon: "◈" },
 ];
 
-export default function Nav() {
+export default function Nav({ session }) {
   const { seeds, isTaskDone } = useSeedsContext();
   const urgentCount = seeds.flatMap(s =>
     getActiveTasks(s).filter(t => !isTaskDone(s.id, t.type))
@@ -19,13 +20,15 @@ export default function Nav() {
 
   return (
     <>
-      <TopNav seeds={seeds} urgentCount={urgentCount} />
+      <TopNav seeds={seeds} urgentCount={urgentCount} session={session} />
       <BottomNav urgentCount={urgentCount} />
     </>
   );
 }
 
-function TopNav({ seeds, urgentCount }) {
+function TopNav({ seeds, urgentCount, session }) {
+  const userEmail = session?.user?.email ?? "";
+  const userLabel = userEmail.split("@")[0];
   return (
     <nav style={{
       position: "fixed",
@@ -54,7 +57,7 @@ function TopNav({ seeds, urgentCount }) {
         </span>
       </NavLink>
 
-      <div style={{ display: "flex", gap: "var(--space-xs)" }}>
+      <div style={{ display: "flex", gap: "var(--space-xs)", alignItems: "center" }}>
         {NAV_ITEMS.map(({ to, label }) => (
           <NavLink key={to} to={to} end={to === "/"} style={({ isActive }) => ({
             fontFamily: "var(--font-sans)",
@@ -77,6 +80,14 @@ function TopNav({ seeds, urgentCount }) {
             )}
           </NavLink>
         ))}
+        <div style={{ width: "1px", height: 20, background: "var(--color-border)", margin: "0 var(--space-xs)" }} />
+        <span style={{ fontSize: "var(--text-nav)", color: "var(--color-text-muted)", fontWeight: 500 }}>{userLabel}</span>
+        <button
+          onClick={() => supabase.auth.signOut()}
+          style={{ background: "none", border: "none", fontSize: "var(--text-nav)", color: "var(--color-text-muted)", cursor: "pointer", padding: "var(--space-xs) var(--space-sm)", minHeight: "auto" }}
+        >
+          Sign out
+        </button>
       </div>
     </nav>
   );
