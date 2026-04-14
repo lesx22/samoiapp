@@ -46,7 +46,7 @@ export default function LoginPage() {
         position: "absolute", top: 0, left: 0, right: 0,
         display: "flex", justifyContent: "space-between", alignItems: "center",
         padding: "var(--space-xl) var(--space-2xl)",
-        zIndex: 10,
+        zIndex: 20,
       }}>
         <span style={{
           fontFamily: "var(--font-serif)",
@@ -87,6 +87,7 @@ export default function LoginPage() {
         alignItems: "center", justifyContent: "center",
         zIndex: 10, textAlign: "center",
         padding: "var(--space-xl)",
+        pointerEvents: "none",
       }}>
         <h1 style={{
           fontFamily: "var(--font-serif)",
