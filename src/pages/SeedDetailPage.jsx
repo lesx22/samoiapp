@@ -713,14 +713,16 @@ function MonthPicker({ label, value, onChange }) {
           <button
             key={m}
             onClick={() => toggle(i + 1)}
+            title={m}
             style={{
-              width: 36, height: 28, borderRadius: 4, border: "1.5px solid",
+              width: 28, height: 28, borderRadius: 4, border: "1.5px solid",
               borderColor: value.includes(i + 1) ? "var(--color-green)" : "var(--color-border)",
               background: value.includes(i + 1) ? "var(--color-green)" : "var(--color-bg)",
               color: value.includes(i + 1) ? "#fff" : "var(--color-text-muted)",
-              fontSize: "var(--text-nav)", fontWeight: 600, cursor: "pointer", minHeight: "auto",
+              fontSize: "var(--text-nav)", fontWeight: 700, cursor: "pointer", minHeight: "auto",
+              display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
             }}
-          >{m}</button>
+          >{m[0]}</button>
         ))}
       </div>
     </div>
