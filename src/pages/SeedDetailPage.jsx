@@ -730,6 +730,7 @@ function MonthPicker({ label, value, onChange }) {
 }
 
 function EditPlantModal({ seed, onSave, onClose }) {
+  const [emoji, setEmoji] = useState(seed.emoji ?? "🌱");
   const [name, setName] = useState(seed.name ?? "");
   const [variety, setVariety] = useState(seed.variety ?? "");
   const [description, setDescription] = useState(seed.description ?? "");
@@ -739,11 +740,12 @@ function EditPlantModal({ seed, onSave, onClose }) {
   const [transplantMonths, setTransplantMonths] = useState(seed.transplantMonths ?? []);
   const [harvestMonths, setHarvestMonths] = useState(seed.harvestMonths ?? []);
   const [saving, setSaving] = useState(false);
+  const [emojiPickerOpen, setEmojiPickerOpen] = useState(false);
 
   async function handleSave() {
     if (!name.trim()) return;
     setSaving(true);
-    await onSave({ name: name.trim(), variety: variety.trim() || null, description: description.trim() || null, brandWebsite: brandWebsite.trim() || null, currentAdvice: currentAdvice.trim() || null, sowMonths, transplantMonths, harvestMonths });
+    await onSave({ emoji, name: name.trim(), variety: variety.trim() || null, description: description.trim() || null, brandWebsite: brandWebsite.trim() || null, currentAdvice: currentAdvice.trim() || null, sowMonths, transplantMonths, harvestMonths });
     setSaving(false);
   }
 
@@ -757,6 +759,32 @@ function EditPlantModal({ seed, onSave, onClose }) {
         </div>
 
         <div style={{ padding: "var(--space-xl)", overflowY: "auto", flex: 1 }}>
+          {/* Emoji picker */}
+          <div style={{ marginBottom: "var(--space-lg)", position: "relative" }}>
+            <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>Emoji</label>
+            <button
+              onClick={() => setEmojiPickerOpen(o => !o)}
+              style={{ width: 56, height: 56, fontSize: "2rem", background: "var(--color-bg)", border: "1.5px solid var(--color-border)", borderRadius: "var(--radius-md)", cursor: "pointer", minHeight: "auto", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+              title="Click to change emoji"
+            >{emoji}</button>
+            {emojiPickerOpen && (
+              <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 400, background: "var(--color-bg)", border: "1.5px solid var(--color-border)", borderRadius: "var(--radius-lg)", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", padding: "var(--space-md)", width: 280 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: "var(--space-sm)" }}>
+                  {["🌱","🌿","🍀","🌾","🌵","🌲","🌳","🌴","🪴","🍃","🌺","🌸","🌼","🌻","🌹","🌷","💐","🍅","🥕","🥦","🥬","🧅","🧄","🍓","🫐","🍇","🍋","🍎","🌽","🫛","🥒","🍆","🫚","🌰","🍄"].map(e => (
+                    <button key={e} onClick={() => { setEmoji(e); setEmojiPickerOpen(false); }} style={{ width: 36, height: 36, fontSize: "1.3rem", background: emoji === e ? "var(--color-green-pale)" : "transparent", border: `1.5px solid ${emoji === e ? "var(--color-green)" : "transparent"}`, borderRadius: 6, cursor: "pointer", minHeight: "auto", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {e}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  value={emoji} onChange={e => setEmoji(e.target.value)} maxLength={2}
+                  placeholder="or type any emoji"
+                  style={{ width: "100%", textAlign: "center", fontSize: "1.1rem", padding: "var(--space-xs)" }}
+                />
+              </div>
+            )}
+          </div>
+
           <div style={{ display: "flex", gap: "var(--space-md)", marginBottom: "var(--space-md)" }}>
             <div style={{ flex: 1 }}>
               <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>Name</label>
