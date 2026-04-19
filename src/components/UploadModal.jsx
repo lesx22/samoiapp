@@ -50,7 +50,7 @@ async function fetchDocText(googleUrl) {
 }
 
 
-export default function UploadModal({ isOpen, onClose }) {
+export default function UploadModal({ isOpen, onClose, editSeedId = null, editSeedName = "" }) {
   const { addSeed, addSeeds, updateSeed, seeds, zones } = useSeedsContext();
   const navigate = useNavigate();
 
@@ -99,6 +99,13 @@ export default function UploadModal({ isOpen, onClose }) {
       });
     return () => { cancelled = true; };
   }, [nameVal]);
+
+  // Pre-fill name when opening in edit mode
+  useEffect(() => {
+    if (isOpen && editSeedId && editSeedName) {
+      setNameVal(editSeedName);
+    }
+  }, [isOpen]);
 
   // Trigger bulk parse/group when step becomes bulkReview
   useEffect(() => {
@@ -249,6 +256,25 @@ export default function UploadModal({ isOpen, onClose }) {
   function handleSubmit() {
     if (!hasInput || step !== "input") return;
     setLocalError(null);
+
+    // Edit mode: update existing plant, skip zone step entirely
+    if (editSeedId) {
+      const inputs = { images: [...images], urlVal, nameVal, selectedCatalogEntry };
+      handleClose();
+      updateSeed(editSeedId, { enriching: true, fetchError: null });
+      (async () => {
+        try {
+          const quickData = await resolveQuickData(inputs);
+          updateSeed(editSeedId, { ...quickData, enriching: true });
+          const fullData = await resolveSeedData(inputs);
+          updateSeed(editSeedId, { ...fullData, enriching: false });
+        } catch (err) {
+          updateSeed(editSeedId, { enriching: false, fetchError: err.message });
+        }
+      })();
+      return;
+    }
+
     // Multiple photos → group with Claude then show bulk review
     if (images.length > 1) {
       setBulkMode("photos");
@@ -343,7 +369,7 @@ export default function UploadModal({ isOpen, onClose }) {
 
           {/* Header */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-xl)" }}>
-            <h2>Add Plants</h2>
+            <h2>{editSeedId ? "Edit Plant" : "Add Plants"}</h2>
             <button onClick={handleClose} style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--color-text-muted)", minHeight: "auto", padding: "var(--space-xs)", lineHeight: 1 }}>×</button>
           </div>
 
@@ -501,7 +527,7 @@ export default function UploadModal({ isOpen, onClose }) {
               </div>
             )}
             <button className="btn-primary" onClick={handleSubmit} disabled={!hasInput} style={{ width: "100%", justifyContent: "center", fontSize: "var(--text-body)", padding: "var(--space-md)" }}>
-              {isBulkImport ? "Import Plants" : "Add Plant"}
+              {editSeedId ? "Update Plant" : isBulkImport ? "Import Plants" : "Add Plant"}
             </button>
           </div>
         )}

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
 import { badge, MONTHS, TODAY_M } from "../data/garden";
 import { chatAboutPlant } from "../lib/claude";
+import UploadModal from "../components/UploadModal";
 
 const DETAIL_TABS = ["Overview", "Today", "Diary", "Chat"];
 
@@ -15,6 +16,7 @@ export default function SeedDetailPage() {
     if (id) loadDiaryEntries(id);
   }, [id]);
   const [activeTab, setActiveTab] = useState(0);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const seed = getSeed(id);
 
   if (!seed) {
@@ -80,12 +82,20 @@ export default function SeedDetailPage() {
         <button className="btn-ghost" onClick={() => navigate("/seeds")} style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-md)" }}>
           ← Seeds
         </button>
-        <button
-          onClick={() => { removeSeed(id); navigate("/seeds"); }}
-          style={{ fontSize: "var(--text-small)", background: "none", border: "1px solid var(--color-error)", color: "var(--color-error)", borderRadius: "var(--radius-sm)", padding: "var(--space-xs) var(--space-md)", minHeight: "auto", cursor: "pointer" }}
-        >
-          Remove
-        </button>
+        <div style={{ display: "flex", gap: "var(--space-sm)" }}>
+          <button
+            onClick={() => setEditModalOpen(true)}
+            style={{ fontSize: "var(--text-small)", background: "none", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", borderRadius: "var(--radius-sm)", padding: "var(--space-xs) var(--space-md)", minHeight: "auto", cursor: "pointer" }}
+          >
+            ✎ Edit / Re-fetch
+          </button>
+          <button
+            onClick={() => { removeSeed(id); navigate("/seeds"); }}
+            style={{ fontSize: "var(--text-small)", background: "none", border: "1px solid var(--color-error)", color: "var(--color-error)", borderRadius: "var(--radius-sm)", padding: "var(--space-xs) var(--space-md)", minHeight: "auto", cursor: "pointer" }}
+          >
+            Remove
+          </button>
+        </div>
       </div>
 
       {/* Hero */}
@@ -161,6 +171,13 @@ export default function SeedDetailPage() {
       {activeTab === 1 && <TodayTab seed={seed} />}
       {activeTab === 2 && <DiaryTab seedId={id} seed={seed} addDiaryEntry={addDiaryEntry} getDiaryEntries={getDiaryEntries} />}
       {activeTab === 3 && <ChatTab seed={seed} />}
+
+      <UploadModal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        editSeedId={id}
+        editSeedName={seed.name}
+      />
     </div>
   );
 }
