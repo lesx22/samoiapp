@@ -2,6 +2,17 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
 
+const ZONE_COLOR_PRESETS = [
+  { label: "Green",  color: "rgba(34,197,94,0.38)",   borderColor: "rgba(21,128,61,0.85)" },
+  { label: "Blue",   color: "rgba(59,130,246,0.38)",  borderColor: "rgba(29,78,216,0.85)" },
+  { label: "Purple", color: "rgba(168,85,247,0.38)",  borderColor: "rgba(109,40,217,0.85)" },
+  { label: "Orange", color: "rgba(249,115,22,0.38)",  borderColor: "rgba(194,65,12,0.85)" },
+  { label: "Red",    color: "rgba(239,68,68,0.38)",   borderColor: "rgba(185,28,28,0.85)" },
+  { label: "Yellow", color: "rgba(234,179,8,0.38)",   borderColor: "rgba(161,98,7,0.85)" },
+  { label: "Pink",   color: "rgba(236,72,153,0.38)",  borderColor: "rgba(157,23,77,0.85)" },
+  { label: "Teal",   color: "rgba(20,184,166,0.38)",  borderColor: "rgba(15,118,110,0.85)" },
+];
+
 function loadLS(key, def) {
   try { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def; }
   catch { return def; }
@@ -19,9 +30,13 @@ const CORNERS = [
 
 export default function GardenPage() {
   const navigate = useNavigate();
-  const { zones, getSeedsByZone } = useSeedsContext();
+  const { zones, getSeedsByZone, createZone, updateZone, deleteZone, uploadGardenImage, gardenBgImage } = useSeedsContext();
   const [hoveredZone, setHoveredZone] = useState(null);
   const [editMode, setEditMode] = useState(false);
+  const [zoneForm, setZoneForm] = useState(null); // null | { mode: "add"|"edit", zone?: zone }
+  const [deleteModal, setDeleteModal] = useState(null); // null | zoneId
+  const [imgUploading, setImgUploading] = useState(false);
+  const imgUploadRef = useRef();
 
   // Zone positions: { left%, top%, width%, height%, rotate (deg) }
   const [positions, setPositions] = useState(() => loadLS("jardin-zone-positions", {}));
@@ -167,17 +182,34 @@ export default function GardenPage() {
         </div>
         <div style={{ display: "flex", gap: "var(--space-sm)" }}>
           {editMode && (
-            <button
-              className="btn-ghost"
-              onClick={() => { setPositions({}); setImgT(DEFAULT_IMG); }}
-              style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-md)", color: "var(--color-text-muted)" }}
-            >
-              Reset all
-            </button>
+            <>
+              <button
+                className="btn-ghost"
+                onClick={() => { setPositions({}); setImgT(DEFAULT_IMG); }}
+                style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-md)", color: "var(--color-text-muted)" }}
+              >
+                Reset all
+              </button>
+              <button
+                className="btn-secondary"
+                onClick={() => setZoneForm({ mode: "add" })}
+                style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-md)" }}
+              >
+                + Add zone
+              </button>
+            </>
           )}
           <button
             className={editMode ? "btn-primary" : "btn-secondary"}
-            onClick={() => setEditMode(v => !v)}
+            onClick={() => {
+              if (editMode) {
+                zones.forEach(zone => {
+                  const p = positions[zone.id];
+                  if (p) updateZone(zone.id, { hotspot: p });
+                });
+              }
+              setEditMode(v => !v);
+            }}
             style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-md)" }}
           >
             {editMode ? "Done" : "Edit zones"}
@@ -194,7 +226,7 @@ export default function GardenPage() {
         >
           {/* Map image — rotatable, scalable, pannable */}
           <img
-            src="/garden-map.jpg"
+            src={gardenBgImage || "/garden-map.jpg"}
             alt="Property map"
             draggable={false}
             style={{
@@ -263,7 +295,24 @@ export default function GardenPage() {
                   )}
                 </div>
 
-                {/* Edit handles */}
+                {/* Edit/delete buttons */}
+                {editMode && (
+                  <div style={{ position: "absolute", top: -28, right: 0, display: "flex", gap: 4, zIndex: 20 }}
+                    onMouseDown={e => e.stopPropagation()}
+                    onTouchStart={e => e.stopPropagation()}
+                  >
+                    <button
+                      onClick={e => { e.stopPropagation(); setZoneForm({ mode: "edit", zone }); }}
+                      style={{ background: "#fff", border: `1.5px solid ${zone.borderColor}`, color: zone.borderColor, borderRadius: 4, fontSize: 11, fontWeight: 700, padding: "2px 6px", cursor: "pointer", lineHeight: 1.4, minHeight: "auto" }}
+                    >✎</button>
+                    <button
+                      onClick={e => { e.stopPropagation(); setDeleteModal(zone.id); }}
+                      style={{ background: "#fff", border: "1.5px solid var(--color-error)", color: "var(--color-error)", borderRadius: 4, fontSize: 11, fontWeight: 700, padding: "2px 6px", cursor: "pointer", lineHeight: 1.4, minHeight: "auto" }}
+                    >×</button>
+                  </div>
+                )}
+
+                {/* Resize/rotate handles */}
                 {editMode && <>
                   {/* Corner resize handles */}
                   {CORNERS.map(({ id, style }) => (
@@ -354,12 +403,24 @@ export default function GardenPage() {
               </span>
             </div>
 
-            {/* Drag hint + reset */}
+            {/* Drag hint + reset + upload */}
             <div style={{ display: "flex", alignItems: "center", gap: "var(--space-md)", marginLeft: "auto" }}>
               <span style={{ fontSize: "var(--text-nav)", color: "var(--color-text-muted)" }}>Drag image to pan</span>
               <button className="btn-ghost" onClick={() => setImgT(DEFAULT_IMG)}
                 style={{ minHeight: "auto", padding: "var(--space-xs) var(--space-md)", fontSize: "var(--text-small)", color: "var(--color-text-muted)" }}>
-                Reset image
+                Reset view
+              </button>
+              <input ref={imgUploadRef} type="file" accept="image/*" style={{ display: "none" }} onChange={async e => {
+                const file = e.target.files[0];
+                if (!file) return;
+                setImgUploading(true);
+                try { await uploadGardenImage(file); } catch (err) { alert("Upload failed: " + err.message); }
+                setImgUploading(false);
+                e.target.value = "";
+              }} />
+              <button className="btn-secondary" onClick={() => imgUploadRef.current.click()} disabled={imgUploading}
+                style={{ minHeight: "auto", padding: "var(--space-xs) var(--space-md)", fontSize: "var(--text-small)" }}>
+                {imgUploading ? "Uploading…" : "📷 Change image"}
               </button>
             </div>
           </div>
@@ -375,9 +436,9 @@ export default function GardenPage() {
             <div
               key={zone.id}
               className="card"
-              onClick={() => navigate(`/garden/${zone.id}`)}
-              style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "var(--space-lg)", borderLeft: `4px solid ${zone.borderColor}` }}
-              onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)"}
+              onClick={() => !editMode && navigate(`/garden/${zone.id}`)}
+              style={{ cursor: editMode ? "default" : "pointer", display: "flex", alignItems: "center", gap: "var(--space-lg)", borderLeft: `4px solid ${zone.borderColor}` }}
+              onMouseEnter={e => { if (!editMode) e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)"; }}
               onMouseLeave={e => e.currentTarget.style.boxShadow = ""}
             >
               <span style={{ fontSize: "2rem", lineHeight: 1, flexShrink: 0 }}>{zone.emoji}</span>
@@ -385,13 +446,183 @@ export default function GardenPage() {
                 <h3 style={{ marginBottom: "2px" }}>{zone.name}</h3>
                 <p style={{ fontSize: "var(--text-small)", color: "var(--color-text-muted)", margin: 0 }}>{zone.description}</p>
               </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <div style={{ fontFamily: "var(--font-serif)", fontSize: "var(--text-h2)", fontWeight: 700, color: zone.borderColor, lineHeight: 1 }}>{seeds.length}</div>
-                <div style={{ fontSize: "var(--text-nav)", color: "var(--color-text-muted)" }}>plant{seeds.length !== 1 ? "s" : ""}</div>
-              </div>
+              {editMode ? (
+                <div style={{ display: "flex", gap: "var(--space-sm)", flexShrink: 0 }}>
+                  <button className="btn-ghost" onClick={() => setZoneForm({ mode: "edit", zone })} style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-sm)" }}>✎ Edit</button>
+                  <button onClick={() => setDeleteModal(zone.id)} style={{ background: "none", border: "1px solid var(--color-error)", color: "var(--color-error)", borderRadius: "var(--radius-sm)", fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-sm)", cursor: "pointer" }}>Delete</button>
+                </div>
+              ) : (
+                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                  <div style={{ fontFamily: "var(--font-serif)", fontSize: "var(--text-h2)", fontWeight: 700, color: zone.borderColor, lineHeight: 1 }}>{seeds.length}</div>
+                  <div style={{ fontSize: "var(--text-nav)", color: "var(--color-text-muted)" }}>plant{seeds.length !== 1 ? "s" : ""}</div>
+                </div>
+              )}
             </div>
           );
         })}
+      </div>
+
+      {/* Zone form modal */}
+      {zoneForm && (
+        <ZoneFormModal
+          mode={zoneForm.mode}
+          zone={zoneForm.zone}
+          onSave={async (data) => {
+            if (zoneForm.mode === "add") {
+              const newZone = await createZone({ ...data, hotspot: { left: "35%", top: "35%", width: "20%", height: "15%", rotate: 0 } });
+            } else {
+              await updateZone(zoneForm.zone.id, data);
+            }
+            setZoneForm(null);
+          }}
+          onClose={() => setZoneForm(null)}
+        />
+      )}
+
+      {/* Delete zone modal */}
+      {deleteModal && (
+        <DeleteZoneModal
+          zone={zones.find(z => z.id === deleteModal)}
+          plantCount={getSeedsByZone(deleteModal).length}
+          onConfirm={async (deletePlants) => {
+            await deleteZone(deleteModal, { deletePlants });
+            setDeleteModal(null);
+          }}
+          onClose={() => setDeleteModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Zone Form Modal ──────────────────────────────────────────────────────────
+
+function ZoneFormModal({ mode, zone, onSave, onClose }) {
+  const [name, setName] = useState(zone?.name ?? "");
+  const [emoji, setEmoji] = useState(zone?.emoji ?? "🌿");
+  const [description, setDescription] = useState(zone?.description ?? "");
+  const [selectedColor, setSelectedColor] = useState(
+    zone ? ZONE_COLOR_PRESETS.find(p => p.color === zone.color) ?? ZONE_COLOR_PRESETS[0] : ZONE_COLOR_PRESETS[0]
+  );
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!name.trim()) return;
+    setSaving(true);
+    await onSave({ name: name.trim(), emoji, description: description.trim(), color: selectedColor.color, borderColor: selectedColor.borderColor });
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: "var(--space-xl)" }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="card" style={{ width: "100%", maxWidth: 440 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-xl)" }}>
+          <h2>{mode === "add" ? "Add Zone" : "Edit Zone"}</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--color-text-muted)", minHeight: "auto", padding: "var(--space-xs)", lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ display: "flex", gap: "var(--space-md)", marginBottom: "var(--space-lg)" }}>
+          <div style={{ flex: "0 0 80px" }}>
+            <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>Emoji</label>
+            <input type="text" value={emoji} onChange={e => setEmoji(e.target.value)} style={{ textAlign: "center", fontSize: "1.5rem", padding: "var(--space-sm)" }} maxLength={2} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>Name</label>
+            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Potager, Ball Court Beds" autoFocus />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: "var(--space-lg)" }}>
+          <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>Description</label>
+          <input type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="Short description of this zone" />
+        </div>
+
+        <div style={{ marginBottom: "var(--space-xl)" }}>
+          <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>Colour</label>
+          <div style={{ display: "flex", gap: "var(--space-sm)", flexWrap: "wrap" }}>
+            {ZONE_COLOR_PRESETS.map(preset => (
+              <button
+                key={preset.label}
+                onClick={() => setSelectedColor(preset)}
+                title={preset.label}
+                style={{
+                  width: 32, height: 32, borderRadius: "var(--radius-sm)",
+                  background: preset.color,
+                  border: selectedColor.label === preset.label ? `3px solid ${preset.borderColor}` : `2px solid ${preset.borderColor}`,
+                  cursor: "pointer", minHeight: "auto", padding: 0,
+                  transform: selectedColor.label === preset.label ? "scale(1.2)" : "scale(1)",
+                  transition: "transform 0.1s ease",
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "var(--space-sm)" }}>
+          <button className="btn-ghost" onClick={onClose} style={{ flex: 1, justifyContent: "center" }}>Cancel</button>
+          <button className="btn-primary" onClick={handleSave} disabled={!name.trim() || saving} style={{ flex: 1, justifyContent: "center" }}>
+            {saving ? "Saving…" : mode === "add" ? "Add Zone" : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Delete Zone Modal ────────────────────────────────────────────────────────
+
+function DeleteZoneModal({ zone, plantCount, onConfirm, onClose }) {
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleConfirm(deletePlants) {
+    setDeleting(true);
+    await onConfirm(deletePlants);
+    setDeleting(false);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: "var(--space-xl)" }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="card" style={{ width: "100%", maxWidth: 420 }}>
+        <h2 style={{ marginBottom: "var(--space-sm)" }}>Delete {zone?.name}?</h2>
+        <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)", marginBottom: "var(--space-xl)" }}>
+          This cannot be undone. {plantCount > 0 ? `This zone has ${plantCount} plant${plantCount !== 1 ? "s" : ""}.` : ""}
+        </p>
+
+        {plantCount > 0 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)", marginBottom: "var(--space-xl)" }}>
+            <button
+              onClick={() => handleConfirm(false)}
+              disabled={deleting}
+              style={{ padding: "var(--space-md)", background: "var(--color-bg)", border: "1.5px solid var(--color-border)", borderRadius: "var(--radius-sm)", cursor: "pointer", textAlign: "left", minHeight: "auto" }}
+            >
+              <div style={{ fontWeight: 600, fontSize: "var(--text-body)", marginBottom: 2 }}>Keep plants, remove from zone</div>
+              <div style={{ fontSize: "var(--text-small)", color: "var(--color-text-muted)" }}>Plants stay in your garden but become unassigned</div>
+            </button>
+            <button
+              onClick={() => handleConfirm(true)}
+              disabled={deleting}
+              style={{ padding: "var(--space-md)", background: "rgba(192,57,43,0.05)", border: "1.5px solid var(--color-error)", borderRadius: "var(--radius-sm)", cursor: "pointer", textAlign: "left", minHeight: "auto" }}
+            >
+              <div style={{ fontWeight: 600, fontSize: "var(--text-body)", color: "var(--color-error)", marginBottom: 2 }}>Delete zone and all plants</div>
+              <div style={{ fontSize: "var(--text-small)", color: "var(--color-text-muted)" }}>Permanently deletes the zone and {plantCount} plant{plantCount !== 1 ? "s" : ""}</div>
+            </button>
+          </div>
+        )}
+
+        {plantCount === 0 && (
+          <button
+            className="btn-primary"
+            onClick={() => handleConfirm(false)}
+            disabled={deleting}
+            style={{ width: "100%", justifyContent: "center", marginBottom: "var(--space-md)", background: "var(--color-error)", borderColor: "var(--color-error)" }}
+          >
+            {deleting ? "Deleting…" : "Delete zone"}
+          </button>
+        )}
+
+        <button className="btn-ghost" onClick={onClose} style={{ width: "100%", justifyContent: "center" }}>Cancel</button>
       </div>
     </div>
   );

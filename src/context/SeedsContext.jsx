@@ -107,13 +107,16 @@ export function SeedsProvider({ children }) {
   const [loadMsg, setLoadMsg] = useState("");
   const [error, setError] = useState(null);
   const [completedTasks, setCompletedTasks] = useState(new Set());
+  const [zoneTasks, setZoneTasks] = useState({});
+  const [zoneDiary, setZoneDiary] = useState({});
+  const [gardenBgImage, setGardenBgImage] = useState(null);
 
   // Load garden, zones, plants, and task completions on mount
   useEffect(() => {
     async function init() {
       const { data: garden, error: gErr } = await supabase
         .from("gardens")
-        .select("id")
+        .select("id, background_image_url")
         .eq("name", GARDEN_NAME)
         .single();
 
@@ -123,6 +126,7 @@ export function SeedsProvider({ children }) {
         return;
       }
       setGardenId(garden.id);
+      setGardenBgImage(garden.background_image_url ?? null);
 
       const [
         { data: zonesData },
@@ -299,14 +303,134 @@ export function SeedsProvider({ children }) {
     return completedTasks.has(`${seedId}-${taskType}`);
   }
 
+  // ── Zone Tasks ───────────────────────────────────────────────────────────────
+
+  async function loadZoneTasks(zoneId) {
+    if (zoneTasks[zoneId] !== undefined) return;
+    const { data, error } = await supabase.from("zone_tasks").select("*").eq("zone_id", zoneId).order("created_at");
+    if (error) { console.error("loadZoneTasks:", error.message); return; }
+    setZoneTasks(prev => ({ ...prev, [zoneId]: (data || []).map(r => ({ id: r.id, title: r.title, description: r.description ?? null, dueDate: r.due_date ?? null, completed: r.completed })) }));
+  }
+
+  async function addZoneTask(zoneId, { title, description, dueDate }) {
+    const { data, error } = await supabase.from("zone_tasks").insert({ zone_id: zoneId, garden_id: gardenId, title, description: description || null, due_date: dueDate || null, completed: false }).select().single();
+    if (error) { console.error("addZoneTask:", error.message); return; }
+    setZoneTasks(prev => ({ ...prev, [zoneId]: [...(prev[zoneId] ?? []), { id: data.id, title: data.title, description: data.description ?? null, dueDate: data.due_date ?? null, completed: false }] }));
+  }
+
+  async function toggleZoneTask(zoneId, taskId) {
+    const task = zoneTasks[zoneId]?.find(t => t.id === taskId);
+    if (!task) return;
+    const newCompleted = !task.completed;
+    setZoneTasks(prev => ({ ...prev, [zoneId]: prev[zoneId].map(t => t.id === taskId ? { ...t, completed: newCompleted } : t) }));
+    const { error } = await supabase.from("zone_tasks").update({ completed: newCompleted }).eq("id", taskId);
+    if (error) console.error("toggleZoneTask:", error.message);
+  }
+
+  async function deleteZoneTask(zoneId, taskId) {
+    setZoneTasks(prev => ({ ...prev, [zoneId]: prev[zoneId].filter(t => t.id !== taskId) }));
+    const { error } = await supabase.from("zone_tasks").delete().eq("id", taskId);
+    if (error) console.error("deleteZoneTask:", error.message);
+  }
+
+  function getZoneTasks(zoneId) { return zoneTasks[zoneId] ?? []; }
+
+  // ── Zone Diary ───────────────────────────────────────────────────────────────
+
+  async function loadZoneDiary(zoneId) {
+    if (zoneDiary[zoneId] !== undefined) return;
+    const { data, error } = await supabase.from("zone_diary_entries").select("*").eq("zone_id", zoneId).order("created_at", { ascending: false });
+    if (error) { console.error("loadZoneDiary:", error.message); return; }
+    setZoneDiary(prev => ({ ...prev, [zoneId]: (data || []).map(r => ({ id: r.id, date: r.date, text: r.text, photo: r.photo_url ?? null })) }));
+  }
+
+  async function addZoneDiaryEntry(zoneId, { text, photo }) {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data, error } = await supabase.from("zone_diary_entries").insert({ zone_id: zoneId, garden_id: gardenId, date: today, text, photo_url: photo ?? null }).select().single();
+    if (error) { console.error("addZoneDiaryEntry:", error.message); return; }
+    setZoneDiary(prev => ({ ...prev, [zoneId]: [{ id: data.id, date: data.date, text: data.text, photo: data.photo_url ?? null }, ...(prev[zoneId] ?? [])] }));
+  }
+
+  async function deleteZoneDiaryEntry(zoneId, entryId) {
+    setZoneDiary(prev => ({ ...prev, [zoneId]: prev[zoneId].filter(e => e.id !== entryId) }));
+    const { error } = await supabase.from("zone_diary_entries").delete().eq("id", entryId);
+    if (error) console.error("deleteZoneDiaryEntry:", error.message);
+  }
+
+  function getZoneDiaryEntries(zoneId) { return zoneDiary[zoneId] ?? []; }
+
+  // ── Zone CRUD ────────────────────────────────────────────────────────────────
+
+  function zoneRowToApp(r) {
+    return { id: r.id, name: r.name, emoji: r.emoji ?? null, description: r.description ?? null, color: r.color ?? null, borderColor: r.border_color ?? null, hotspot: r.hotspot ?? {} };
+  }
+
+  async function createZone({ name, emoji, description, color, borderColor, hotspot }) {
+    const id = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") + "-" + Date.now();
+    const { data, error } = await supabase.from("zones").insert({ id, garden_id: gardenId, name, emoji: emoji || null, description: description || null, color: color || null, border_color: borderColor || null, hotspot: hotspot || {} }).select().single();
+    if (error) throw new Error(error.message);
+    const appZone = zoneRowToApp(data);
+    setZones(prev => [...prev, appZone]);
+    return appZone;
+  }
+
+  async function updateZone(zoneId, updates) {
+    const dbUpdates = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+    if (updates.emoji !== undefined) dbUpdates.emoji = updates.emoji;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.color !== undefined) dbUpdates.color = updates.color;
+    if (updates.borderColor !== undefined) dbUpdates.border_color = updates.borderColor;
+    if (updates.hotspot !== undefined) dbUpdates.hotspot = updates.hotspot;
+    setZones(prev => prev.map(z => z.id === zoneId ? { ...z, ...updates } : z));
+    if (Object.keys(dbUpdates).length > 0) {
+      const { error } = await supabase.from("zones").update(dbUpdates).eq("id", zoneId);
+      if (error) console.error("updateZone:", error.message);
+    }
+  }
+
+  async function deleteZone(zoneId, { deletePlants }) {
+    if (deletePlants) {
+      const toDelete = seeds.filter(s => s.zoneId === zoneId);
+      await Promise.all(toDelete.map(p => supabase.from("plants").delete().eq("id", p.id)));
+      setSeeds(prev => prev.filter(s => s.zoneId !== zoneId));
+    } else {
+      setSeeds(prev => prev.map(s => s.zoneId === zoneId ? { ...s, zoneId: null } : s));
+      await supabase.from("plants").update({ zone_id: null }).eq("zone_id", zoneId);
+    }
+    setZones(prev => prev.filter(z => z.id !== zoneId));
+    const { error } = await supabase.from("zones").delete().eq("id", zoneId);
+    if (error) console.error("deleteZone:", error.message);
+  }
+
+  // ── Garden Image ─────────────────────────────────────────────────────────────
+
+  async function uploadGardenImage(file) {
+    const filename = `${gardenId}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, "-")}`;
+    const { error: uploadError } = await supabase.storage.from("garden-images").upload(filename, file, { cacheControl: "3600", upsert: false });
+    if (uploadError) throw new Error(uploadError.message);
+    const { data: { publicUrl } } = supabase.storage.from("garden-images").getPublicUrl(filename);
+    await Promise.all([
+      supabase.from("garden_images").insert({ garden_id: gardenId, url: publicUrl }),
+      supabase.from("gardens").update({ background_image_url: publicUrl }).eq("id", gardenId),
+    ]);
+    setGardenBgImage(publicUrl);
+    return publicUrl;
+  }
+
   return (
     <SeedsContext.Provider value={{
       seeds, zones, loading, loadMsg, error, initializing, gardenId,
+      gardenBgImage,
       setLoading, setLoadMsg, setError,
       addSeed, addSeeds, updateSeed, removeSeed, getSeed,
       assignZone, getSeedsByZone, getZone,
       loadDiaryEntries, addDiaryEntry, getDiaryEntries,
       toggleTask, isTaskDone,
+      loadZoneTasks, addZoneTask, toggleZoneTask, deleteZoneTask, getZoneTasks,
+      loadZoneDiary, addZoneDiaryEntry, deleteZoneDiaryEntry, getZoneDiaryEntries,
+      createZone, updateZone, deleteZone,
+      uploadGardenImage,
     }}>
       {children}
     </SeedsContext.Provider>

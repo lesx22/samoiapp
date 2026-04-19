@@ -1,17 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
 import { getActiveTasks, MONTHS, TODAY_M } from "../data/garden";
 import { TaskRow } from "./TodayPage";
 
-const ZONE_TABS = ["Seeds", "Today", "Calendar"];
+const ZONE_TABS = ["Seeds", "Today", "Tasks", "Diary", "Calendar"];
 
 export default function ZoneDetailPage() {
   const { zoneId } = useParams();
   const navigate = useNavigate();
-  const { getZone, getSeedsByZone, toggleTask, isTaskDone } = useSeedsContext();
+  const { getZone, getSeedsByZone, toggleTask, isTaskDone,
+    loadZoneTasks, addZoneTask, toggleZoneTask, deleteZoneTask, getZoneTasks,
+    loadZoneDiary, addZoneDiaryEntry, deleteZoneDiaryEntry, getZoneDiaryEntries,
+    loadDiaryEntries, getDiaryEntries,
+  } = useSeedsContext();
   const [activeTab, setActiveTab] = useState(0);
   const zone = getZone(zoneId);
+  const seeds = zone ? getSeedsByZone(zoneId) : [];
+
+  useEffect(() => {
+    if (!zoneId) return;
+    loadZoneTasks(zoneId);
+    loadZoneDiary(zoneId);
+  }, [zoneId]);
 
   if (!zone) {
     return (
@@ -23,8 +34,6 @@ export default function ZoneDetailPage() {
       </div>
     );
   }
-
-  const seeds = getSeedsByZone(zoneId);
 
   return (
     <div className="page">
@@ -80,7 +89,9 @@ export default function ZoneDetailPage() {
 
       {activeTab === 0 && <SeedsTab seeds={seeds} zone={zone} navigate={navigate} />}
       {activeTab === 1 && <TodayTab seeds={seeds} toggleTask={toggleTask} isTaskDone={isTaskDone} navigate={navigate} />}
-      {activeTab === 2 && <CalendarTab seeds={seeds} />}
+      {activeTab === 2 && <ZoneTasksTab zoneId={zoneId} zone={zone} seeds={seeds} getZoneTasks={getZoneTasks} addZoneTask={addZoneTask} toggleZoneTask={toggleZoneTask} deleteZoneTask={deleteZoneTask} toggleTask={toggleTask} isTaskDone={isTaskDone} navigate={navigate} />}
+      {activeTab === 3 && <ZoneDiaryTab zoneId={zoneId} zone={zone} seeds={seeds} getZoneDiaryEntries={getZoneDiaryEntries} addZoneDiaryEntry={addZoneDiaryEntry} deleteZoneDiaryEntry={deleteZoneDiaryEntry} loadDiaryEntries={loadDiaryEntries} getDiaryEntries={getDiaryEntries} />}
+      {activeTab === 4 && <CalendarTab seeds={seeds} />}
     </div>
   );
 }
@@ -183,6 +194,145 @@ function TodayTab({ seeds, toggleTask, isTaskDone, navigate }) {
               />
             ))}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Zone Tasks Tab ───────────────────────────────────────────────────────────
+
+function ZoneTasksTab({ zoneId, zone, seeds, getZoneTasks, addZoneTask, toggleZoneTask, deleteZoneTask, toggleTask, isTaskDone, navigate }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const zoneTasks = getZoneTasks(zoneId);
+  const plantTasks = seeds.flatMap(seed => getActiveTasks(seed).map(task => ({ seed, task })));
+
+  async function handleAdd() {
+    if (!title.trim()) return;
+    setSaving(true);
+    await addZoneTask(zoneId, { title: title.trim(), description: description.trim(), dueDate: dueDate || null });
+    setTitle(""); setDescription(""); setDueDate(""); setShowForm(false); setSaving(false);
+  }
+
+  return (
+    <div>
+      {/* Zone-wide tasks */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-md)" }}>
+        <div style={{ fontSize: "var(--text-nav)", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Zone Tasks</div>
+        <button className="btn-ghost" onClick={() => setShowForm(v => !v)} style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-md)" }}>
+          {showForm ? "Cancel" : "+ Add task"}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
+          <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title (e.g. Weed the beds)" style={{ marginBottom: "var(--space-sm)" }} autoFocus />
+          <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" rows={2} style={{ marginBottom: "var(--space-sm)", resize: "vertical" }} />
+          <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ marginBottom: "var(--space-md)" }} />
+          <button className="btn-primary" onClick={handleAdd} disabled={!title.trim() || saving} style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-lg)" }}>
+            {saving ? "Saving…" : "Save task"}
+          </button>
+        </div>
+      )}
+
+      {zoneTasks.length === 0 && !showForm ? (
+        <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)", marginBottom: "var(--space-xl)" }}>No zone tasks yet. Add tasks like weeding, mulching, or watering the whole zone.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)", marginBottom: "var(--space-xl)" }}>
+          {zoneTasks.map(task => (
+            <div key={task.id} className="card" style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-md)", opacity: task.completed ? 0.6 : 1 }}>
+              <input type="checkbox" checked={task.completed} onChange={() => toggleZoneTask(zoneId, task.id)} style={{ marginTop: 3, flexShrink: 0, width: 16, height: 16, cursor: "pointer" }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: "var(--text-body)", textDecoration: task.completed ? "line-through" : "none" }}>{task.title}</div>
+                {task.description && <div style={{ fontSize: "var(--text-small)", color: "var(--color-text-muted)", marginTop: 2 }}>{task.description}</div>}
+                {task.dueDate && <div style={{ fontSize: "var(--text-nav)", color: zone.borderColor, marginTop: 4, fontWeight: 600 }}>Due: {new Date(task.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</div>}
+              </div>
+              <button onClick={() => deleteZoneTask(zoneId, task.id)} style={{ background: "none", border: "none", color: "var(--color-text-muted)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: 4, minHeight: "auto" }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Plant tasks read-only */}
+      {plantTasks.length > 0 && (
+        <>
+          <div style={{ fontSize: "var(--text-nav)", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "var(--space-md)" }}>Plant Tasks</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+            {plantTasks.map(({ seed, task }) => (
+              <TaskRow key={`${seed.id}-${task.type}`} seed={seed} task={task} done={isTaskDone(seed.id, task.type)} onToggle={() => toggleTask(seed.id, task.type)} onNavigate={() => navigate(`/seeds/${seed.id}`)} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Zone Diary Tab ───────────────────────────────────────────────────────────
+
+function ZoneDiaryTab({ zoneId, zone, seeds, getZoneDiaryEntries, addZoneDiaryEntry, deleteZoneDiaryEntry, loadDiaryEntries, getDiaryEntries }) {
+  const [text, setText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const zoneEntries = getZoneDiaryEntries(zoneId);
+
+  useEffect(() => {
+    seeds.forEach(s => loadDiaryEntries(s.id));
+  }, [seeds.length]);
+
+  const plantEntries = seeds.flatMap(seed =>
+    getDiaryEntries(seed.id).map(e => ({ ...e, sourceName: seed.name, sourceEmoji: seed.emoji || "🌱", isPlant: true }))
+  );
+
+  const allEntries = [
+    ...zoneEntries.map(e => ({ ...e, sourceName: zone.name, sourceEmoji: zone.emoji, isPlant: false })),
+    ...plantEntries,
+  ].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  async function handleSave() {
+    if (!text.trim()) return;
+    setSaving(true);
+    await addZoneDiaryEntry(zoneId, { text: text.trim(), photo: null });
+    setText(""); setSaving(false);
+  }
+
+  return (
+    <div>
+      <div className="card" style={{ marginBottom: "var(--space-xl)" }}>
+        <h3 style={{ marginBottom: "var(--space-md)" }}>Add a zone note</h3>
+        <textarea value={text} onChange={e => setText(e.target.value)} placeholder="What's happening in this zone today?" rows={3} style={{ marginBottom: "var(--space-md)", resize: "vertical" }} />
+        <button className="btn-primary" onClick={handleSave} disabled={!text.trim() || saving} style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-lg)" }}>
+          {saving ? "Saving…" : "Save entry"}
+        </button>
+      </div>
+
+      {allEntries.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "var(--space-2xl) 0", color: "var(--color-text-muted)" }}>
+          <p>No diary entries yet for this zone or its plants.</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
+          {allEntries.map(entry => (
+            <div key={`${entry.isPlant ? "p" : "z"}-${entry.id}`} className="card" style={{ borderLeft: `3px solid ${entry.isPlant ? "var(--color-border)" : zone.borderColor}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "var(--space-sm)" }}>
+                <div>
+                  <span style={{ fontSize: "var(--text-nav)", fontWeight: 600, color: "var(--color-text-muted)" }}>
+                    {new Date(entry.date).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                  </span>
+                  <span style={{ fontSize: "var(--text-nav)", color: entry.isPlant ? "var(--color-text-muted)" : zone.borderColor, marginLeft: "var(--space-sm)", fontWeight: 600 }}>
+                    {entry.sourceEmoji} {entry.sourceName}
+                  </span>
+                </div>
+                {!entry.isPlant && (
+                  <button onClick={() => deleteZoneDiaryEntry(zoneId, entry.id)} style={{ background: "none", border: "none", color: "var(--color-text-muted)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: 4, minHeight: "auto" }}>×</button>
+                )}
+              </div>
+              <p style={{ fontSize: "var(--text-body)", lineHeight: 1.7, margin: 0 }}>{entry.text}</p>
+            </div>
+          ))}
         </div>
       )}
     </div>
