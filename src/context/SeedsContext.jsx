@@ -110,6 +110,7 @@ export function SeedsProvider({ children }) {
   const [zoneTasks, setZoneTasks] = useState({});
   const [zoneDiary, setZoneDiary] = useState({});
   const [gardenBgImage, setGardenBgImage] = useState(null);
+  const [plantCustomTasks, setPlantCustomTasks] = useState({});
 
   // Load garden, zones, plants, and task completions on mount
   useEffect(() => {
@@ -303,6 +304,38 @@ export function SeedsProvider({ children }) {
     return completedTasks.has(`${seedId}-${taskType}`);
   }
 
+  // ── Plant Custom Tasks ───────────────────────────────────────────────────────
+
+  async function loadPlantTasks(plantId) {
+    if (plantCustomTasks[plantId] !== undefined) return;
+    const { data, error } = await supabase.from("plant_tasks").select("*").eq("plant_id", plantId).order("created_at");
+    if (error) { console.error("loadPlantTasks:", error.message); return; }
+    setPlantCustomTasks(prev => ({ ...prev, [plantId]: (data || []).map(r => ({ id: r.id, title: r.title, description: r.description ?? null, dueDate: r.due_date ?? null, completed: r.completed })) }));
+  }
+
+  async function addPlantTask(plantId, { title, description, dueDate }) {
+    const { data, error } = await supabase.from("plant_tasks").insert({ plant_id: plantId, garden_id: gardenId, title, description: description || null, due_date: dueDate || null, completed: false }).select().single();
+    if (error) { console.error("addPlantTask:", error.message); return; }
+    setPlantCustomTasks(prev => ({ ...prev, [plantId]: [...(prev[plantId] ?? []), { id: data.id, title: data.title, description: data.description ?? null, dueDate: data.due_date ?? null, completed: false }] }));
+  }
+
+  async function togglePlantTask(plantId, taskId) {
+    const task = plantCustomTasks[plantId]?.find(t => t.id === taskId);
+    if (!task) return;
+    const newCompleted = !task.completed;
+    setPlantCustomTasks(prev => ({ ...prev, [plantId]: prev[plantId].map(t => t.id === taskId ? { ...t, completed: newCompleted } : t) }));
+    const { error } = await supabase.from("plant_tasks").update({ completed: newCompleted }).eq("id", taskId);
+    if (error) console.error("togglePlantTask:", error.message);
+  }
+
+  async function deletePlantTask(plantId, taskId) {
+    setPlantCustomTasks(prev => ({ ...prev, [plantId]: prev[plantId].filter(t => t.id !== taskId) }));
+    const { error } = await supabase.from("plant_tasks").delete().eq("id", taskId);
+    if (error) console.error("deletePlantTask:", error.message);
+  }
+
+  function getPlantTasks(plantId) { return plantCustomTasks[plantId] ?? []; }
+
   // ── Zone Tasks ───────────────────────────────────────────────────────────────
 
   async function loadZoneTasks(zoneId) {
@@ -427,6 +460,7 @@ export function SeedsProvider({ children }) {
       assignZone, getSeedsByZone, getZone,
       loadDiaryEntries, addDiaryEntry, getDiaryEntries,
       toggleTask, isTaskDone,
+      loadPlantTasks, addPlantTask, togglePlantTask, deletePlantTask, getPlantTasks,
       loadZoneTasks, addZoneTask, toggleZoneTask, deleteZoneTask, getZoneTasks,
       loadZoneDiary, addZoneDiaryEntry, deleteZoneDiaryEntry, getZoneDiaryEntries,
       createZone, updateZone, deleteZone,

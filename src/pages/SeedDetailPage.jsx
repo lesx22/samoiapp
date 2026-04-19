@@ -5,18 +5,26 @@ import { badge, MONTHS, TODAY_M } from "../data/garden";
 import { chatAboutPlant } from "../lib/claude";
 import UploadModal from "../components/UploadModal";
 
-const DETAIL_TABS = ["Overview", "Today", "Diary", "Chat"];
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+const DETAIL_TABS = ["Overview", "Tasks", "Today", "Diary", "Chat"];
 
 export default function SeedDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getSeed, removeSeed, assignZone, addDiaryEntry, getDiaryEntries, loadDiaryEntries } = useSeedsContext();
+  const { getSeed, removeSeed, assignZone, addDiaryEntry, getDiaryEntries, loadDiaryEntries, updateSeed,
+    loadPlantTasks, addPlantTask, togglePlantTask, deletePlantTask, getPlantTasks } = useSeedsContext();
 
   useEffect(() => {
     if (id) loadDiaryEntries(id);
   }, [id]);
   const [activeTab, setActiveTab] = useState(0);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [refetchModalOpen, setRefetchModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (id) loadPlantTasks(id);
+  }, [id]);
   const seed = getSeed(id);
 
   if (!seed) {
@@ -87,7 +95,13 @@ export default function SeedDetailPage() {
             onClick={() => setEditModalOpen(true)}
             style={{ fontSize: "var(--text-small)", background: "none", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", borderRadius: "var(--radius-sm)", padding: "var(--space-xs) var(--space-md)", minHeight: "auto", cursor: "pointer" }}
           >
-            ✎ Edit / Re-fetch
+            ✎ Edit
+          </button>
+          <button
+            onClick={() => setRefetchModalOpen(true)}
+            style={{ fontSize: "var(--text-small)", background: "none", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", borderRadius: "var(--radius-sm)", padding: "var(--space-xs) var(--space-md)", minHeight: "auto", cursor: "pointer" }}
+          >
+            ↻ Re-fetch
           </button>
           <button
             onClick={() => { removeSeed(id); navigate("/seeds"); }}
@@ -168,13 +182,22 @@ export default function SeedDetailPage() {
 
       {/* Tab content */}
       {activeTab === 0 && <OverviewTab seed={seed} assignZone={assignZone} />}
-      {activeTab === 1 && <TodayTab seed={seed} />}
-      {activeTab === 2 && <DiaryTab seedId={id} seed={seed} addDiaryEntry={addDiaryEntry} getDiaryEntries={getDiaryEntries} />}
-      {activeTab === 3 && <ChatTab seed={seed} />}
+      {activeTab === 1 && <PlantTasksTab seedId={id} seed={seed} getPlantTasks={getPlantTasks} addPlantTask={addPlantTask} togglePlantTask={togglePlantTask} deletePlantTask={deletePlantTask} />}
+      {activeTab === 2 && <TodayTab seed={seed} />}
+      {activeTab === 3 && <DiaryTab seedId={id} seed={seed} addDiaryEntry={addDiaryEntry} getDiaryEntries={getDiaryEntries} />}
+      {activeTab === 4 && <ChatTab seed={seed} />}
+
+      {editModalOpen && (
+        <EditPlantModal
+          seed={seed}
+          onSave={async (updates) => { await updateSeed(id, updates); setEditModalOpen(false); }}
+          onClose={() => setEditModalOpen(false)}
+        />
+      )}
 
       <UploadModal
-        isOpen={editModalOpen}
-        onClose={() => setEditModalOpen(false)}
+        isOpen={refetchModalOpen}
+        onClose={() => setRefetchModalOpen(false)}
         editSeedId={id}
         editSeedName={seed.name}
       />
@@ -598,6 +621,177 @@ function ChatTab({ seed }) {
         >
           Send
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Plant Tasks Tab ──────────────────────────────────────────────────────────
+
+function PlantTasksTab({ seedId, seed, getPlantTasks, addPlantTask, togglePlantTask, deletePlantTask }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const customTasks = getPlantTasks(seedId);
+  const b = badge(seed);
+
+  async function handleAdd() {
+    if (!title.trim()) return;
+    setSaving(true);
+    await addPlantTask(seedId, { title: title.trim(), description: description.trim(), dueDate: dueDate || null });
+    setTitle(""); setDescription(""); setDueDate(""); setShowForm(false); setSaving(false);
+  }
+
+  return (
+    <div>
+      {/* Auto-generated tasks */}
+      <div style={{ fontSize: "var(--text-nav)", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "var(--space-md)" }}>
+        Calendar Tasks
+      </div>
+      <div className="card" style={{ marginBottom: "var(--space-xl)", display: "flex", alignItems: "center", gap: "var(--space-md)" }}>
+        <span style={{ fontSize: "1.5rem", lineHeight: 1 }}>{seed.emoji || "🌱"}</span>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: "var(--text-body)" }}>{b.t}</div>
+          {seed.immediateNextStep && <div style={{ fontSize: "var(--text-small)", color: "var(--color-text-muted)", marginTop: 2 }}>{seed.immediateNextStep}</div>}
+        </div>
+        <span style={{ marginLeft: "auto", fontSize: "var(--text-nav)", fontWeight: 700, color: b.color, border: `1.5px solid ${b.color}`, borderRadius: "100px", padding: "2px var(--space-sm)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{b.t}</span>
+      </div>
+
+      {/* Custom tasks */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-md)" }}>
+        <div style={{ fontSize: "var(--text-nav)", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>Custom Tasks</div>
+        <button className="btn-ghost" onClick={() => setShowForm(v => !v)} style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-md)" }}>
+          {showForm ? "Cancel" : "+ Add task"}
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
+          <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title (e.g. Stake, Prune, Fertilize)" style={{ marginBottom: "var(--space-sm)" }} autoFocus />
+          <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Description (optional)" rows={2} style={{ marginBottom: "var(--space-sm)", resize: "vertical" }} />
+          <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ marginBottom: "var(--space-md)" }} />
+          <button className="btn-primary" onClick={handleAdd} disabled={!title.trim() || saving} style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-lg)" }}>
+            {saving ? "Saving…" : "Save task"}
+          </button>
+        </div>
+      )}
+
+      {customTasks.length === 0 && !showForm ? (
+        <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)" }}>No custom tasks yet. Add tasks like staking, pruning, or fertilizing.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+          {customTasks.map(task => (
+            <div key={task.id} className="card" style={{ display: "flex", alignItems: "flex-start", gap: "var(--space-md)", opacity: task.completed ? 0.6 : 1 }}>
+              <input type="checkbox" checked={task.completed} onChange={() => togglePlantTask(seedId, task.id)} style={{ marginTop: 3, flexShrink: 0, width: 16, height: 16, cursor: "pointer" }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: "var(--text-body)", textDecoration: task.completed ? "line-through" : "none" }}>{task.title}</div>
+                {task.description && <div style={{ fontSize: "var(--text-small)", color: "var(--color-text-muted)", marginTop: 2 }}>{task.description}</div>}
+                {task.dueDate && <div style={{ fontSize: "var(--text-nav)", color: "var(--color-green)", marginTop: 4, fontWeight: 600 }}>Due: {new Date(task.dueDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</div>}
+              </div>
+              <button onClick={() => deletePlantTask(seedId, task.id)} style={{ background: "none", border: "none", color: "var(--color-text-muted)", cursor: "pointer", fontSize: "1.1rem", lineHeight: 1, padding: 4, minHeight: "auto" }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Edit Plant Modal ─────────────────────────────────────────────────────────
+
+function MonthPicker({ label, value, onChange }) {
+  function toggle(m) {
+    onChange(value.includes(m) ? value.filter(x => x !== m) : [...value, m].sort((a, b) => a - b));
+  }
+  return (
+    <div style={{ marginBottom: "var(--space-md)" }}>
+      <div style={{ fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>{label}</div>
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        {MONTH_NAMES.map((m, i) => (
+          <button
+            key={m}
+            onClick={() => toggle(i + 1)}
+            style={{
+              width: 36, height: 28, borderRadius: 4, border: "1.5px solid",
+              borderColor: value.includes(i + 1) ? "var(--color-green)" : "var(--color-border)",
+              background: value.includes(i + 1) ? "var(--color-green)" : "var(--color-bg)",
+              color: value.includes(i + 1) ? "#fff" : "var(--color-text-muted)",
+              fontSize: "var(--text-nav)", fontWeight: 600, cursor: "pointer", minHeight: "auto",
+            }}
+          >{m}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EditPlantModal({ seed, onSave, onClose }) {
+  const [name, setName] = useState(seed.name ?? "");
+  const [variety, setVariety] = useState(seed.variety ?? "");
+  const [description, setDescription] = useState(seed.description ?? "");
+  const [brandWebsite, setBrandWebsite] = useState(seed.brandWebsite ?? "");
+  const [currentAdvice, setCurrentAdvice] = useState(seed.currentAdvice ?? "");
+  const [sowMonths, setSowMonths] = useState(seed.sowMonths ?? []);
+  const [transplantMonths, setTransplantMonths] = useState(seed.transplantMonths ?? []);
+  const [harvestMonths, setHarvestMonths] = useState(seed.harvestMonths ?? []);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!name.trim()) return;
+    setSaving(true);
+    await onSave({ name: name.trim(), variety: variety.trim() || null, description: description.trim() || null, brandWebsite: brandWebsite.trim() || null, currentAdvice: currentAdvice.trim() || null, sowMonths, transplantMonths, harvestMonths });
+    setSaving(false);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: "var(--space-xl)" }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: "var(--color-bg)", borderRadius: "var(--radius-lg)", width: "100%", maxWidth: 520, maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 8px 40px rgba(0,0,0,0.2)" }}>
+        <div style={{ padding: "var(--space-xl)", borderBottom: "1.5px solid var(--color-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2>Edit Plant</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: "1.5rem", cursor: "pointer", color: "var(--color-text-muted)", minHeight: "auto", padding: "var(--space-xs)", lineHeight: 1 }}>×</button>
+        </div>
+
+        <div style={{ padding: "var(--space-xl)", overflowY: "auto", flex: 1 }}>
+          <div style={{ display: "flex", gap: "var(--space-md)", marginBottom: "var(--space-md)" }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>Name</label>
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Plant name" />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>Variety</label>
+              <input value={variety} onChange={e => setVariety(e.target.value)} placeholder="Variety or leave blank" />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: "var(--space-md)" }}>
+            <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>Description</label>
+            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Short description" style={{ resize: "vertical" }} />
+          </div>
+
+          <div style={{ marginBottom: "var(--space-md)" }}>
+            <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>Source URL</label>
+            <input type="url" value={brandWebsite} onChange={e => setBrandWebsite(e.target.value)} placeholder="https://..." />
+          </div>
+
+          <div style={{ marginBottom: "var(--space-lg)" }}>
+            <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>Current Advice</label>
+            <textarea value={currentAdvice} onChange={e => setCurrentAdvice(e.target.value)} rows={3} placeholder="What to do right now" style={{ resize: "vertical" }} />
+          </div>
+
+          <MonthPicker label="Sow months" value={sowMonths} onChange={setSowMonths} />
+          <MonthPicker label="Transplant months" value={transplantMonths} onChange={setTransplantMonths} />
+          <MonthPicker label="Harvest months" value={harvestMonths} onChange={setHarvestMonths} />
+        </div>
+
+        <div style={{ padding: "var(--space-lg) var(--space-xl)", borderTop: "1.5px solid var(--color-border)", display: "flex", gap: "var(--space-sm)" }}>
+          <button className="btn-ghost" onClick={onClose} style={{ flex: 1, justifyContent: "center" }}>Cancel</button>
+          <button className="btn-primary" onClick={handleSave} disabled={!name.trim() || saving} style={{ flex: 1, justifyContent: "center" }}>
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        </div>
       </div>
     </div>
   );
