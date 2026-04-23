@@ -768,19 +768,8 @@ function EditPlantModal({ seed, onSave, onClose }) {
               title="Click to change emoji"
             >{emoji}</button>
             {emojiPickerOpen && (
-              <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 400, background: "var(--color-bg)", border: "1.5px solid var(--color-border)", borderRadius: "var(--radius-lg)", boxShadow: "0 8px 32px rgba(0,0,0,0.18)", padding: "var(--space-md)", width: 280 }}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: "var(--space-sm)" }}>
-                  {["🌱","🌿","🍀","🌾","🌵","🌲","🌳","🌴","🪴","🍃","🌺","🌸","🌼","🌻","🌹","🌷","💐","🍅","🥕","🥦","🥬","🧅","🧄","🍓","🫐","🍇","🍋","🍎","🌽","🫛","🥒","🍆","🫚","🌰","🍄"].map(e => (
-                    <button key={e} onClick={() => { setEmoji(e); setEmojiPickerOpen(false); }} style={{ width: 36, height: 36, fontSize: "1.3rem", background: emoji === e ? "var(--color-green-pale)" : "transparent", border: `1.5px solid ${emoji === e ? "var(--color-green)" : "transparent"}`, borderRadius: 6, cursor: "pointer", minHeight: "auto", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {e}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  value={emoji} onChange={e => setEmoji(e.target.value)} maxLength={2}
-                  placeholder="or type any emoji"
-                  style={{ width: "100%", textAlign: "center", fontSize: "1.1rem", padding: "var(--space-xs)" }}
-                />
+              <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 400 }}>
+                <EmojiPickerPopover onSelect={e => { setEmoji(e); setEmojiPickerOpen(false); }} onClose={() => setEmojiPickerOpen(false)} />
               </div>
             )}
           </div>
@@ -828,6 +817,75 @@ function EditPlantModal({ seed, onSave, onClose }) {
 }
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
+
+const EMOJI_CATEGORIES = [
+  { id: "nature", icon: "🌿", label: "Nature", emojis: ["🌱","🌿","☘️","🍀","🎍","🎋","🌾","🌵","🌲","🌳","🌴","🪵","🪴","🍃","🍂","🍁","🍄","🌺","🌸","🌼","🌻","🌹","🥀","🌷","🪷","💐","🌰","🌊","🌬️","🌀","🌈","⛅","☁️","❄️","☃️","⛄","☀️","🌤️","⛈️","🌧️","🔥","💧","🌊","⭐","🌟","✨","⚡","🪸","🪨","🌋","🏔️","⛰️","🗻"] },
+  { id: "food", icon: "🍅", label: "Food", emojis: ["🍎","🍊","🍋","🍇","🍓","🫐","🍈","🍑","🍒","🍌","🍍","🥭","🥥","🍏","🫒","🥝","🍅","🫛","🥦","🥬","🥒","🌶️","🫑","🧄","🧅","🥕","🌽","🥔","🍠","🫘","🌰","🥜","🫚","🥗","🥙","🥘","🍲","🥣","🧂","🍯","🫖","☕","🍵","🧃","🥤","🍺","🍷","🥂","🍾","🫗"] },
+  { id: "animals", icon: "🐾", label: "Animals", emojis: ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵","🦝","🦦","🦫","🐧","🐦","🦅","🦆","🦉","🦚","🦜","🦢","🐓","🦃","🐥","🐣","🐛","🦋","🐌","🐞","🐜","🪲","🦟","🦗","🕷️","🐢","🐍","🦎","🐊","🦓","🐘","🦬","🐄","🐖","🐑","🐐","🦙","🦌","🐕","🐩","🐈","🐇","🐿️","🦔"] },
+  { id: "smileys", icon: "😊", label: "Smileys", emojis: ["😀","😃","😄","😁","😆","😅","🤣","😂","🙂","🙃","😉","😊","😇","🥰","😍","🤩","😘","😗","😚","😙","🥲","😋","😛","😜","🤪","😝","🤑","🤗","🤔","🤫","😐","😑","😶","😏","😒","🙄","😬","😌","😔","😪","😴","😷","🤒","🤕","🤢","🤮","🥴","😵","🤯","😎","🤓","😕","😟","🙁","☹️","😮","😯","😲","😳","🥺","😢","😭","😱","😤","😡","😠","🤬","😈","👿","💀","☠️","👻","👽","🤖","🎃"] },
+  { id: "activities", icon: "⚽", label: "Activities", emojis: ["⚽","🏀","🏈","⚾","🥎","🎾","🏐","🏉","🎱","🏓","🏸","🥅","⛳","🎣","🤿","🎽","🎿","🛷","🎯","🪀","🪁","🎲","🎮","🎰","🎳","🎻","🎸","🎹","🥁","🎺","🎷","🎼","🎤","🎧","🎭","🎨","✏️","🖌️","🔭","🔬","🧪","🎁","🎈","🎉","🎊","🎀","🛍️","🎆","🎇","🧧","🎐","🎑","🎃","🎄"] },
+  { id: "travel", icon: "🌍", label: "Travel", emojis: ["🚗","🚕","🚙","🚌","🏎️","🚓","🚑","🚒","🚜","🏍️","🛵","🚲","🛴","✈️","🛫","🛬","⛵","🚢","🏔️","⛰️","🌋","🗻","🏕️","🏖️","🏠","🏡","🏢","🏥","🏦","🏨","🏪","🏫","🏬","🏭","🗼","🗽","⛪","🕌","🛕","🕍","🕋","⛩️","🎠","🎡","🎢","🎪","🌁","🌃","🏙️","🌄","🌅","🌆","🌇","🌉","🗺️","🧭","🌐","🗿"] },
+  { id: "objects", icon: "💡", label: "Objects", emojis: ["⌚","📱","💻","⌨️","🖥️","💾","💿","📷","📹","🎥","📺","📻","⏰","⌛","⏳","🔋","🔌","💡","🔦","🕯️","🪔","💰","💳","💎","⚖️","🔑","🗝️","🔨","🪓","⛏️","🔧","🔩","⚙️","🔗","⛓️","🪝","🧲","🔫","💣","🧰","🧪","🧫","🔭","🩺","💊","💉","🩹","🧴","🧷","🧹","🧺","🧻","🛋️","🚪","🧸","🪆","🖼️","🪞","🪟","🎁","🪑","🧰","🔐","🔒","🔓","🔏"] },
+  { id: "symbols", icon: "❤️", label: "Symbols", emojis: ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","✅","❌","⭕","🛑","⛔","📛","🚫","💯","⚠️","🔱","⚜️","🔰","♻️","✔️","🔛","🔜","🔚","🔙","⏩","⏭️","⏸️","⏹️","⏺️","🔀","🔁","🔂","❓","❔","❕","❗","🔅","🔆","🔲","🔳","⬛","⬜","🟥","🟧","🟨","🟩","🟦","🟪","🟫","⚫","⚪","🔴","🟠","🟡","🟢","🔵","🟣","🟤","🔶","🔷","🔸","🔹","🔺","🔻","💠","🔘"] },
+];
+
+function EmojiPickerPopover({ onSelect, onClose }) {
+  const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState("nature");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClick(e) { if (ref.current && !ref.current.contains(e.target)) onClose(); }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [onClose]);
+
+  const allEmojis = EMOJI_CATEGORIES.flatMap(c => c.emojis);
+  const displayEmojis = search.trim()
+    ? allEmojis.filter(e => e.includes(search))
+    : EMOJI_CATEGORIES.find(c => c.id === activeCategory)?.emojis ?? [];
+
+  return (
+    <div ref={ref} style={{ background: "var(--color-bg)", border: "1.5px solid var(--color-border)", borderRadius: 16, boxShadow: "0 8px 40px rgba(0,0,0,0.18)", width: 320, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      {/* Search */}
+      <div style={{ padding: "10px 12px 8px" }}>
+        <input
+          autoFocus
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search emoji..."
+          style={{ width: "100%", background: "var(--color-border)", border: "none", borderRadius: 10, padding: "8px 12px", fontSize: "var(--text-small)", outline: "none" }}
+        />
+      </div>
+      {/* Emoji grid */}
+      <div style={{ height: 280, overflowY: "auto", padding: "4px 8px" }}>
+        {!search.trim() && (
+          <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", padding: "4px 4px 6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            {EMOJI_CATEGORIES.find(c => c.id === activeCategory)?.label}
+          </div>
+        )}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+          {displayEmojis.map((e, i) => (
+            <button key={i} onClick={() => onSelect(e)} style={{ width: 38, height: 38, fontSize: "1.4rem", background: "none", border: "none", borderRadius: 8, cursor: "pointer", minHeight: "auto", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", transition: "background 0.1s" }}
+              onMouseEnter={ev => ev.currentTarget.style.background = "var(--color-border)"}
+              onMouseLeave={ev => ev.currentTarget.style.background = "none"}
+            >{e}</button>
+          ))}
+          {displayEmojis.length === 0 && <div style={{ padding: "var(--space-md)", color: "var(--color-text-muted)", fontSize: "var(--text-small)" }}>No results</div>}
+        </div>
+      </div>
+      {/* Category tabs */}
+      <div style={{ display: "flex", borderTop: "1.5px solid var(--color-border)", padding: "6px 4px" }}>
+        {EMOJI_CATEGORIES.map(c => (
+          <button key={c.id} onClick={() => { setActiveCategory(c.id); setSearch(""); }} title={c.label}
+            style={{ flex: 1, height: 36, fontSize: "1.1rem", background: activeCategory === c.id ? "var(--color-green-pale)" : "none", border: "none", borderRadius: 8, cursor: "pointer", minHeight: "auto", padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {c.icon}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function MonthBar({ months, color, label }) {
   if (!months?.length) return null;
