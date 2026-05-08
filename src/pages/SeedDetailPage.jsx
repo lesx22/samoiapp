@@ -73,10 +73,16 @@ export default function SeedDetailPage() {
           <span style={{ fontSize: "3rem", lineHeight: 1 }}>⚠️</span>
           <div>
             <h1 style={{ fontSize: "var(--text-h2)", marginBottom: "var(--space-xs)" }}>{seed.name}</h1>
-            <p style={{ color: "var(--color-error)", fontSize: "var(--text-small)", margin: 0 }}>{seed.fetchError}</p>
+            <p style={{ color: "var(--color-error)", fontSize: "var(--text-small)", margin: 0 }}>Something went wrong fetching this plant's data.</p>
           </div>
         </div>
-        <button className="btn-secondary" onClick={() => navigate("/seeds")}>Back to Seeds</button>
+        <div style={{ display: "flex", gap: "var(--space-sm)" }}>
+          <button className="btn-primary" onClick={() => setRefetchModalOpen(true)}>↻ Try again</button>
+          <button className="btn-secondary" onClick={() => navigate("/seeds")}>Back to Seeds</button>
+        </div>
+        {refetchModalOpen && (
+          <UploadModal isOpen={refetchModalOpen} onClose={() => setRefetchModalOpen(false)} editSeedId={id} editSeedName={seed.name} />
+        )}
       </div>
     );
   }

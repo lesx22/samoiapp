@@ -3,7 +3,9 @@ import { supabase } from "../lib/supabase";
 
 export default function LoginPage() {
   const [showLogin, setShowLogin] = useState(false);
+  const [mode, setMode] = useState("password"); // "password" | "magic"
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -13,13 +15,22 @@ export default function LoginPage() {
     if (!email.trim()) return;
     setLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: window.location.origin },
-    });
-    setLoading(false);
-    if (error) { setError(error.message); return; }
-    setSent(true);
+    if (mode === "password") {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      });
+      setLoading(false);
+      if (error) { setError(error.message); return; }
+    } else {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim().toLowerCase(),
+        options: { emailRedirectTo: window.location.origin },
+      });
+      setLoading(false);
+      if (error) { setError(error.message); return; }
+      setSent(true);
+    }
   }
 
   return (
@@ -126,10 +137,20 @@ export default function LoginPage() {
           <div className="card" style={{ width: "100%", maxWidth: 400 }}>
             {!sent ? (
               <>
-                <h2 style={{ marginBottom: "var(--space-xs)" }}>Sign in</h2>
-                <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)", marginBottom: "var(--space-xl)" }}>
-                  Enter your email and we'll send you a magic link.
-                </p>
+                <h2 style={{ marginBottom: "var(--space-xl)" }}>Sign in</h2>
+                {/* Mode toggle */}
+                <div style={{ display: "flex", background: "var(--color-border)", borderRadius: "var(--radius-sm)", padding: 3, marginBottom: "var(--space-xl)" }}>
+                  {[["password", "Password"], ["magic", "Magic link"]].map(([val, label]) => (
+                    <button key={val} type="button" onClick={() => { setMode(val); setError(null); }}
+                      style={{ flex: 1, padding: "var(--space-xs) 0", fontSize: "var(--text-small)", fontWeight: 600, border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", minHeight: "auto", transition: "background 0.15s, color 0.15s",
+                        background: mode === val ? "var(--color-bg)" : "transparent",
+                        color: mode === val ? "var(--color-text)" : "var(--color-text-muted)",
+                        boxShadow: mode === val ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
+                      }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
                 <form onSubmit={handleSubmit}>
                   <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
                     Email address
@@ -141,8 +162,28 @@ export default function LoginPage() {
                     placeholder="you@example.com"
                     autoFocus
                     required
-                    style={{ marginBottom: "var(--space-lg)" }}
+                    style={{ marginBottom: "var(--space-md)" }}
                   />
+                  {mode === "password" && (
+                    <>
+                      <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        required
+                        style={{ marginBottom: "var(--space-md)" }}
+                      />
+                    </>
+                  )}
+                  {mode === "magic" && (
+                    <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)", marginBottom: "var(--space-md)" }}>
+                      We'll send a sign-in link to your email.
+                    </p>
+                  )}
                   {error && (
                     <p style={{ color: "var(--color-error)", fontSize: "var(--text-small)", marginBottom: "var(--space-md)" }}>
                       {error}
@@ -151,10 +192,10 @@ export default function LoginPage() {
                   <button
                     type="submit"
                     className="btn-primary"
-                    disabled={!email.trim() || loading}
+                    disabled={!email.trim() || loading || (mode === "password" && !password)}
                     style={{ width: "100%", justifyContent: "center" }}
                   >
-                    {loading ? "Sending…" : "Send magic link"}
+                    {loading ? "Signing in…" : mode === "password" ? "Sign in" : "Send magic link"}
                   </button>
                 </form>
               </>

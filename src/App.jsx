@@ -13,6 +13,7 @@ import CalendarPage from "./pages/CalendarPage";
 import ZonePage from "./pages/ZonePage";
 import GardenPage from "./pages/GardenPage";
 import ZoneDetailPage from "./pages/ZoneDetailPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 function AppShell({ session }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -58,15 +59,23 @@ function AppShell({ session }) {
 export default function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isRecovery, setIsRecovery] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setAuthLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setAuthLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setIsRecovery(true);
+        setSession(session);
+        setAuthLoading(false);
+      } else {
+        setIsRecovery(false);
+        setSession(session);
+        setAuthLoading(false);
+      }
     });
     return () => subscription.unsubscribe();
   }, []);
@@ -79,6 +88,10 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  if (isRecovery) {
+    return <ResetPasswordPage onDone={() => setIsRecovery(false)} />;
   }
 
   if (!session) {
