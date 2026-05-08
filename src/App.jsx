@@ -62,19 +62,32 @@ export default function App() {
   const [isRecovery, setIsRecovery] = useState(false);
 
   useEffect(() => {
+    // Check URL hash immediately — recovery links contain #type=recovery
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    if (hashParams.get("type") === "recovery") {
+      setIsRecovery(true);
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setAuthLoading(false);
     });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsRecovery(true);
         setSession(session);
         setAuthLoading(false);
-      } else {
+      } else if (event === "USER_UPDATED") {
+        // Password was successfully updated — clear recovery mode
         setIsRecovery(false);
         setSession(session);
         setAuthLoading(false);
+      } else {
+        if (!isRecovery) {
+          setSession(session);
+          setAuthLoading(false);
+        }
       }
     });
     return () => subscription.unsubscribe();
