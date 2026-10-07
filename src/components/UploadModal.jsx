@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
 import { fromImage, fromText, fromURL, fromURLQuick, fromImageQuick, fromGoogleDoc, groupPhotos } from "../lib/claude";
+import { shrinkImage } from "../lib/image";
 import { supabase } from "../lib/supabase";
 
 function inferProvider(url) {
@@ -118,8 +119,7 @@ export default function UploadModal({ isOpen, onClose, editSeedId = null, editSe
     if (bulkMode === "photos") {
       // ── Photo grouping path ────────────────────────────────────────────────
       Promise.all(bulkPhotos.map(async img => ({
-        b64: await fileToBase64(img.file),
-        mime: img.file.type,
+        ...(await shrinkImage(img.file)),
         filename: img.file.name,
         preview: img.preview,
       })))
@@ -756,8 +756,8 @@ async function resolveQuickData({ images, urlVal, nameVal, selectedCatalogEntry 
   }
   if (images.length > 0) {
     const img = images[0];
-    const b64 = await fileToBase64(img.file);
-    return fromImageQuick(b64, img.file.type, img.file.name);
+    const { b64, mime } = await shrinkImage(img.file);
+    return fromImageQuick(b64, mime, img.file.name);
   }
   return { name: nameVal.trim(), emoji: "🌱" };
 }
@@ -765,8 +765,8 @@ async function resolveQuickData({ images, urlVal, nameVal, selectedCatalogEntry 
 async function resolveSeedData({ images, urlVal, nameVal, selectedCatalogEntry }) {
   if (images.length > 0) {
     const img = images[0];
-    const b64 = await fileToBase64(img.file);
-    return fromImage(b64, img.file.type, img.file.name);
+    const { b64, mime } = await shrinkImage(img.file);
+    return fromImage(b64, mime, img.file.name);
   }
   if (urlVal.trim()) {
     const url = urlVal.trim();
@@ -775,13 +775,4 @@ async function resolveSeedData({ images, urlVal, nameVal, selectedCatalogEntry }
   }
   if (selectedCatalogEntry?.url) return fromURL(selectedCatalogEntry.url);
   return fromText(nameVal);
-}
-
-function fileToBase64(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result.split(",")[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }

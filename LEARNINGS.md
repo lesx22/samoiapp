@@ -11,8 +11,13 @@ Reusable rules from bugs and surprises. Check this before making changes.
 ## 2026-10-07: Any `VITE_` env variable is shipped to the browser
 - **What went wrong:** `VITE_ANTHROPIC_API_KEY` is bundled into the public JavaScript, so anyone on the live site can read the key.
 - **Why:** Vite exposes every variable prefixed with `VITE_` to client code by design.
-- **Fix (pending):** move Claude API calls into a Vercel serverless function, then rotate the key.
+- **Fix:** Claude calls now go through `api/claude.js`, a Vercel function that holds `ANTHROPIC_API_KEY` and only answers signed-in Supabase users. The old key must be rotated because it was public.
 - **Rule:** only public values (Supabase URL, anon key) get the `VITE_` prefix. Secret keys live server-side with no prefix.
 
 ## 2026-10-07: Port 5173 is often taken by another local project
 - **Rule:** run this app with `npm run dev -- --port 5180 --strictPort`. Never kill whatever is on 5173; it belongs to another project.
+
+## 2026-10-07: Vercel functions reject request bodies over 4.5 MB
+- **What went wrong:** moving Claude calls behind `/api/claude` would have broken photo uploads, because raw phone photos (3-8 MB, larger once base64-encoded) exceed Vercel's limit.
+- **Fix:** `src/lib/image.js` shrinks photos to 1568px on the long edge as JPEG before sending.
+- **Rule:** anything sent through a Vercel function must stay under 4.5 MB. Shrink or upload to Supabase Storage first.

@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import https from 'node:https'
 import http from 'node:http'
@@ -45,10 +45,41 @@ function gdocProxyPlugin() {
   };
 }
 
-export default defineConfig({
-  plugins: [react(), gdocProxyPlugin()],
-  test: {
-    environment: 'jsdom',
-    setupFiles: './src/test/setup.js',
-  },
+// Runs the Vercel function in api/claude.js inside the dev server, so
+// `npm run dev` behaves like production without needing `vercel dev`.
+function claudeApiPlugin() {
+  return {
+    name: 'claude-api',
+    configureServer(server) {
+      server.middlewares.use('/api/claude', async (req, res) => {
+        const chunks = [];
+        for await (const chunk of req) chunks.push(chunk);
+        const request = new Request(`http://localhost${req.originalUrl}`, {
+          method: req.method,
+          headers: req.headers,
+          body: req.method === 'POST' ? Buffer.concat(chunks) : undefined,
+        });
+        const { POST } = await server.ssrLoadModule('/api/claude.js');
+        const response = req.method === 'POST'
+          ? await POST(request)
+          : new Response('Method not allowed', { status: 405 });
+        res.writeHead(response.status, Object.fromEntries(response.headers));
+        res.end(Buffer.from(await response.arrayBuffer()));
+      });
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => {
+  // Give the dev-server copy of api/claude.js the same env vars Vercel gives it
+  for (const [key, value] of Object.entries(loadEnv(mode, process.cwd(), ''))) {
+    process.env[key] ??= value;
+  }
+  return {
+    plugins: [react(), gdocProxyPlugin(), claudeApiPlugin()],
+    test: {
+      environment: 'jsdom',
+      setupFiles: './src/test/setup.js',
+    },
+  }
 })
