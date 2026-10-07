@@ -539,6 +539,113 @@
   }
 }
 
+/* ─── Groups and disclosures ───────────────────────────────────────────────── */
+
+/* Small grey count next to a heading */
+.ui-count {
+  display: inline-block;
+  margin-left: var(--space-1);
+  font-family: var(--font-sans);
+  font-size: var(--type-small);
+  font-weight: 500;
+  color: var(--color-text-subtle);
+}
+
+/* Header row at the top of a flush card, above a list */
+.ui-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--control-h);
+  margin: 0;
+  padding: var(--space-2) var(--card-pad);
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  font-weight: 600;
+  background: var(--color-surface);
+  border-bottom: var(--line) solid var(--line-color);
+}
+.ui-group-footer {
+  padding: var(--space-1) var(--card-pad);
+  border-top: var(--line) solid var(--line-color);
+}
+
+/* A heading or row that opens and closes the content below it */
+.ui-disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-h-sm);
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.ui-disclosure svg { color: var(--color-text-subtle); transition: transform var(--dur) var(--ease); }
+.ui-disclosure[aria-expanded="true"] svg { transform: rotate(180deg); }
+.ui-disclosure:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
+
+/* ─── Task rows ────────────────────────────────────────────────────────────── */
+
+.ui-task { align-items: flex-start; }
+.ui-task > .ui-tag { margin-top: 2px; }
+.ui-task__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: inherit;
+  text-decoration: none;
+}
+.ui-task__body:hover .ui-task__name { text-decoration: underline; }
+.ui-task__body:hover { color: inherit; }
+.ui-task__body > .ui-small { max-width: 72ch; } /* keeps lines readable on wide screens */
+.ui-task__body:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
+
+/* Round tick box with a 44px tap area around a 22px circle */
+.ui-check-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-height: 0;
+  margin: -4px 0 -4px -6px;
+  padding: 0;
+  border: none;
+  background: none;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.ui-check-circle > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 50%;
+  color: #fff;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.ui-check-circle:hover > span { border-color: var(--color-green); }
+.ui-check-circle[aria-checked="true"] > span { background: var(--color-green); border-color: var(--color-green); }
+.ui-check-circle:focus-visible { outline: none; }
+.ui-check-circle:focus-visible > span { box-shadow: var(--focus-ring); }
+@media (max-width: 767px) {
+  .ui-check-circle { width: 44px; height: 44px; margin: -10px -6px -10px -12px; }
+}
+
+.ui-task--done .ui-task__name,
+.ui-task--completing .ui-task__name { text-decoration: line-through; color: var(--color-text-subtle); }
+.ui-task--completing { animation: uiTaskOut 400ms var(--ease) 800ms forwards; pointer-events: none; }
+@keyframes uiTaskOut { to { opacity: 0; } }
+
 /* ─── Swatches (preview page only) ─────────────────────────────────────────── */
 
 .ui-swatch { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--type-small); }
@@ -548,6 +655,8 @@
 @media (prefers-reduced-motion: reduce) {
   .ui-app-header, .ui-btn, .ui-card--interactive, .ui-toolbar { transition: none; }
   .ui-sheet, .ui-sheet-backdrop { animation: none; }
+  .ui-task--completing { animation: none; }
+  .ui-disclosure svg { transition: none; }
   .ui-btn:active:not(:disabled) { transform: none; }
 }
 

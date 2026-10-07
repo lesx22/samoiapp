@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-07 (Today page on the UI kit)
+- **feat:** Today rebuilt on the UI kit: search and a filter sheet (task type, zone, including "No zone"), each area in its own card showing 5 tasks then "Show more", "days late" on overdue tasks, thinner round tick boxes, shorter tick-then-remove animation. Home's Today card uses the same task row.
+- **fix:** Home's Today card showed tasks months overdue (for example "160 days late") that Today and the nav badge already treat as probably done; it now shows tasks due now first.
+
 ## 2026-10-07 (Plants page on the UI kit)
 - **feat:** Plants page rebuilt on the shared UI kit: one-line toolbar (search, Filter, sort, list or grid), filters in a sheet that apply on "Show N plants", removable filter chips, pages of 40 with "Show more", zone and category columns on desktop, Add plants fixed to the bottom on phones, toolbar hides on scroll down on phones.
 - **fix:** the zone filter showed internal ids (for example `potager-…`) instead of zone names.
