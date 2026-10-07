@@ -14,9 +14,9 @@ export const TODAY_M = new Date().getMonth() + 1;
 
 export function badge(seed) {
   const m = TODAY_M;
-  if (seed.sowMonths?.includes(m))        return { t: "SOW NOW",        color: "var(--color-green)" };
-  if (seed.transplantMonths?.includes(m)) return { t: "TRANSPLANT NOW", color: "#1d4ed8" };
-  if (seed.harvestMonths?.includes(m))    return { t: "HARVEST NOW",    color: "#b45309" };
+  if (seed.sowMonths?.includes(m))        return { t: "SOW NOW",        color: "var(--color-green)", type: "sow" };
+  if (seed.transplantMonths?.includes(m)) return { t: "TRANSPLANT NOW", color: "#1d4ed8", type: "transplant" };
+  if (seed.harvestMonths?.includes(m))    return { t: "HARVEST NOW",    color: "#b45309", type: "harvest" };
   const nxt = [...(seed.sowMonths || []), ...(seed.transplantMonths || [])].filter(x => x > m).sort()[0];
   if (nxt) return { t: `SOW IN ${MONTHS[nxt - 1].toUpperCase()}`, color: "#c2410c" };
   return { t: "SEASON DONE", color: "var(--color-text-muted)" };
@@ -51,4 +51,25 @@ export function getActiveTasks(seed) {
   }
 
   return tasks;
+}
+
+// Short how-to for a task, built from the plant's fixed facts (not the dated
+// AI advice, which was written for the day the plant was added).
+export function taskGuidance(seed, type) {
+  const join = parts => parts.filter(Boolean).join(" ") || null;
+  if (type === "sow") {
+    return join([
+      seed.startMethod && `${seed.startMethod}.`,
+      seed.germinationDays && `Germinates in ${seed.germinationDays}${seed.germinationTempC ? ` at ${seed.germinationTempC}` : ""}.`,
+    ]);
+  }
+  if (type === "transplant") {
+    const t = seed.transplanting || {};
+    return join([
+      t.spacing && `Space ${t.spacing}${t.rowSpacing ? `, rows ${t.rowSpacing}` : ""}.`,
+      t.soilTempMinC != null && `Wait until the soil is at least ${t.soilTempMinC}°C.`,
+    ]);
+  }
+  if (type === "harvest") return seed.harvest?.signs || null;
+  return null;
 }

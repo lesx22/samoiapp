@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
-import { badge, MONTHS, TODAY_M } from "../data/garden";
+import { badge, taskGuidance, MONTHS, TODAY_M } from "../data/garden";
 import { chatAboutPlant } from "../lib/claude";
 import UploadModal from "../components/UploadModal";
 
@@ -389,23 +389,30 @@ function OverviewTab({ seed, assignZone }) {
 
 function TodayTab({ seed }) {
   const b = badge(seed);
+  const guidance = taskGuidance(seed, b.type);
   return (
     <div>
-      {/* Status */}
+      {/* Status this month, with how-to for that task */}
       <div className="card" style={{ marginBottom: "var(--space-lg)", borderLeft: `4px solid ${b.color}` }}>
-        <div style={{ fontSize: "var(--text-nav)", fontWeight: 700, color: b.color, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "var(--space-sm)" }}>
+        <div style={{ fontSize: "var(--text-nav)", fontWeight: 700, color: b.color, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: guidance ? "var(--space-sm)" : 0 }}>
           {b.t}
         </div>
-        <p style={{ fontSize: "var(--text-body)", lineHeight: 1.7, margin: 0 }}>{seed.currentAdvice}</p>
+        {guidance && <p style={{ fontSize: "var(--text-body)", lineHeight: 1.7, margin: 0 }}>{guidance}</p>}
       </div>
 
-      {/* Immediate next step */}
-      {seed.immediateNextStep && (
-        <div className="card" style={{ marginBottom: "var(--space-lg)", background: "var(--color-green-pale)", borderColor: "var(--color-green)" }}>
-          <div style={{ fontSize: "var(--text-nav)", fontWeight: 700, color: "var(--color-green)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "var(--space-sm)" }}>
-            Next step today
-          </div>
-          <p style={{ fontSize: "var(--text-body)", lineHeight: 1.7, margin: 0, fontWeight: 500 }}>{seed.immediateNextStep}</p>
+      {/* AI advice is written once, when the plant is added or re-fetched */}
+      {(seed.currentAdvice || seed.immediateNextStep) && (
+        <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
+          <h3 style={{ marginBottom: "var(--space-xs)" }}>Growing advice</h3>
+          <p style={{ fontSize: "var(--text-small)", color: "var(--color-text-muted)", margin: "0 0 var(--space-md)" }}>
+            Written when this plant was added or last re-fetched, so it may be out of date. Use Re-fetch to update it.
+          </p>
+          {seed.currentAdvice && <p style={{ fontSize: "var(--text-body)", lineHeight: 1.7, margin: 0 }}>{seed.currentAdvice}</p>}
+          {seed.immediateNextStep && (
+            <p style={{ fontSize: "var(--text-body)", lineHeight: 1.7, margin: "var(--space-md) 0 0" }}>
+              <strong>Suggested next step:</strong> {seed.immediateNextStep}
+            </p>
+          )}
         </div>
       )}
 
@@ -642,6 +649,7 @@ function PlantTasksTab({ seedId, seed, getPlantTasks, addPlantTask, togglePlantT
   const [saving, setSaving] = useState(false);
   const customTasks = getPlantTasks(seedId);
   const b = badge(seed);
+  const guidance = taskGuidance(seed, b.type);
 
   async function handleAdd() {
     if (!title.trim()) return;
@@ -660,7 +668,7 @@ function PlantTasksTab({ seedId, seed, getPlantTasks, addPlantTask, togglePlantT
         <span style={{ fontSize: "1.5rem", lineHeight: 1 }}>{seed.emoji || "🌱"}</span>
         <div>
           <div style={{ fontWeight: 600, fontSize: "var(--text-body)" }}>{b.t}</div>
-          {seed.immediateNextStep && <div style={{ fontSize: "var(--text-small)", color: "var(--color-text-muted)", marginTop: 2 }}>{seed.immediateNextStep}</div>}
+          {guidance && <div style={{ fontSize: "var(--text-small)", color: "var(--color-text-muted)", marginTop: 2 }}>{guidance}</div>}
         </div>
         <span style={{ marginLeft: "auto", fontSize: "var(--text-nav)", fontWeight: 700, color: b.color, border: `1.5px solid ${b.color}`, borderRadius: "100px", padding: "2px var(--space-sm)", textTransform: "uppercase", letterSpacing: "0.06em" }}>{b.t}</span>
       </div>

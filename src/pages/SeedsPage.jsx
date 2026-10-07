@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
-import { badge } from "../data/garden";
+import { badge, taskGuidance } from "../data/garden";
 
 // ─── Color palette for dots ───────────────────────────────────────────────────
 
@@ -589,6 +589,7 @@ function SeedCard({ seed, onClick }) {
   }
 
   const b = badge(seed);
+  const guidance = taskGuidance(seed, b.type);
 
   return (
     <div
@@ -639,7 +640,7 @@ function SeedCard({ seed, onClick }) {
         {seed.brand && <span>🏷 {seed.brand}</span>}
       </div>
 
-      {seed.immediateNextStep && (
+      {guidance && (
         <p style={{
           marginTop: "var(--space-md)",
           fontSize: "var(--text-small)",
@@ -649,7 +650,7 @@ function SeedCard({ seed, onClick }) {
           paddingTop: "var(--space-md)",
           margin: "var(--space-md) 0 0",
         }}>
-          {seed.immediateNextStep}
+          {guidance}
         </p>
       )}
 
