@@ -27,3 +27,31 @@ describe("callClaude", () => {
     await expect(callClaude("sys", [{ role: "user", content: "hi" }])).rejects.toThrow(/API 401/);
   });
 });
+
+describe("prompts use the real current date", () => {
+  afterEach(() => vi.useRealTimers());
+
+  it("formats today as a plain English date", async () => {
+    const { todayLabel } = await import("./claude");
+    expect(todayLabel(new Date(2026, 9, 7))).toBe("7 October 2026");
+  });
+
+  it("puts today's date into the plant prompt and never the old fixed date", async () => {
+    const { seedSystemPrompt } = await import("./claude");
+    const prompt = seedSystemPrompt("7 October 2026");
+    expect(prompt).toContain("TODAY: 7 October 2026.");
+    expect(prompt).not.toContain("April 5 2026");
+  });
+
+  it("tells the plant chat what day it is", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 7));
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ content: [{ type: "text", text: "ok" }] })));
+    vi.stubGlobal("fetch", fetchMock);
+    const { chatAboutPlant } = await import("./claude");
+
+    await chatAboutPlant("Tomato", [{ role: "user", content: "When do I prune?" }]);
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).system).toContain("Today is 7 October 2026.");
+  });
+});
