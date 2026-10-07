@@ -1,0 +1,422 @@
+/* ─── Jardin Planner UI kit (design rebuild, first pass) ──────────────────────
+   The shared building blocks every page will move onto. Classes start with
+   "ui-" so they can sit next to the old styles while pages move over one at a
+   time. Colours reuse the existing tokens until the brand kit arrives.
+
+   Density: phones get bigger tap areas and text; desktop (1024px and up) is
+   tighter, because a mouse is more precise than a finger. Change a value here
+   and every component follows. */
+
+:root {
+  /* Spacing: one 4px step scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Corners */
+  --radius-control: 8px;   /* buttons, inputs */
+  --radius-card: 12px;
+  --radius-sheet: 16px;
+  --radius-pill: 999px;
+
+  /* Lines: one weight everywhere */
+  --line: 1px;
+  --line-color: #e4e6e1;
+  --line-strong: #c9cdc5;
+
+  /* Colours added for the kit */
+  --color-green-hover: #245a41;
+  --color-green-press: #1c4733;
+  --color-green-tint: #eef6f0;
+  --color-error-tint: #fbeeec;
+  --color-text-subtle: #6b6f68;
+  --focus-ring: 0 0 0 3px rgba(45, 106, 79, 0.35);
+  --shadow-raised: 0 1px 2px rgba(17, 17, 17, 0.06), 0 4px 12px rgba(17, 17, 17, 0.06);
+
+  /* Type: phone sizes */
+  --type-display: 1.75rem;  /* 28px page titles */
+  --type-title: 1.25rem;    /* 20px section titles */
+  --type-subtitle: 1.0625rem; /* 17px card titles */
+  --type-body: 1rem;        /* 16px; also stops iPhone zooming into inputs */
+  --type-small: 0.875rem;   /* 14px */
+  --type-label: 0.75rem;    /* 12px uppercase labels */
+
+  /* Density: phone */
+  --control-h: 44px;
+  --control-h-sm: 36px;
+  --control-px: var(--space-4);
+  --card-pad: var(--space-4);
+  --gutter: var(--space-4);
+  --stack: var(--space-4);  /* default gap between blocks */
+
+  /* Page widths */
+  --width-reading: 720px;
+  --width-wide: 1200px;
+
+  /* Bars */
+  --app-header-h: 56px;
+  --tabbar-h: 64px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 120ms;
+  --dur: 200ms;
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --type-display: 2rem;      /* 32px */
+    --type-title: 1.25rem;     /* 20px */
+    --type-subtitle: 1rem;     /* 16px */
+    --type-body: 0.9375rem;    /* 15px */
+    --type-small: 0.8125rem;   /* 13px */
+    --type-label: 0.6875rem;   /* 11px */
+
+    --control-h: 36px;
+    --control-h-sm: 30px;
+    --control-px: var(--space-3);
+    --card-pad: var(--space-5);
+    --gutter: var(--space-8);
+    --stack: var(--space-5);
+  }
+}
+
+/* ─── Type ─────────────────────────────────────────────────────────────────── */
+
+.ui-display  { font-family: var(--font-serif); font-size: var(--type-display); font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; }
+.ui-title    { font-family: var(--font-sans); font-size: var(--type-title); font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
+.ui-subtitle { font-family: var(--font-sans); font-size: var(--type-subtitle); font-weight: 600; line-height: 1.35; }
+.ui-body     { font-size: var(--type-body); line-height: 1.5; }
+.ui-small    { font-size: var(--type-small); line-height: 1.45; color: var(--color-text-subtle); }
+.ui-label    {
+  font-family: var(--font-sans);
+  font-size: var(--type-label);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-subtle);
+}
+
+/* ─── Page layout ──────────────────────────────────────────────────────────── */
+
+.ui-page {
+  width: 100%;
+  max-width: var(--width-wide);
+  margin: 0 auto;
+  padding: var(--space-4) var(--gutter) calc(var(--tabbar-h) + var(--space-8));
+  font-size: var(--type-body);
+}
+.ui-page--reading { max-width: var(--width-reading); }
+/* Leaves room for a fixed action bar at the bottom */
+.ui-page--with-actions { padding-bottom: calc(var(--tabbar-h) + var(--control-h) + var(--space-12)); }
+
+@media (min-width: 768px) {
+  .ui-page { padding-top: calc(var(--nav-height) + var(--space-6)); padding-bottom: var(--space-12); }
+  .ui-page--with-actions { padding-bottom: calc(var(--control-h) + var(--space-12) * 2); }
+}
+
+.ui-stack { display: flex; flex-direction: column; gap: var(--stack); }
+.ui-row   { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+/* Two columns on desktop (side panel + content), one column on phones */
+.ui-split { display: grid; gap: var(--stack); }
+@media (min-width: 1024px) {
+  .ui-split { grid-template-columns: 260px minmax(0, 1fr); align-items: start; }
+}
+
+/* Card grid: as many columns as fit */
+.ui-grid { display: grid; gap: var(--space-3); grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+.ui-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--stack);
+}
+
+/* Phone header: shows when you land, slides away as you scroll down, comes
+   back as soon as you scroll up. Desktop keeps the existing top nav. */
+.ui-app-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--app-header-h);
+  padding: 0 var(--gutter);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  border-bottom: var(--line) solid var(--line-color);
+  transition: transform var(--dur) var(--ease);
+}
+.ui-app-header--hidden { transform: translateY(-100%); }
+
+/* Main action fixed to the bottom of the screen on phones, above the tab bar.
+   On desktop it sits inline at the end of the content instead. */
+.ui-action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--tabbar-h);
+  z-index: 30;
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--gutter);
+  background: var(--color-bg);
+  border-top: var(--line) solid var(--line-color);
+}
+.ui-action-bar > * { flex: 1; }
+@media (min-width: 768px) {
+  .ui-action-bar {
+    position: static;
+    justify-content: flex-end;
+    padding: var(--space-4) 0 0;
+    background: none;
+  }
+  .ui-action-bar > * { flex: 0 0 auto; }
+}
+
+/* ─── Buttons ──────────────────────────────────────────────────────────────── */
+
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--control-h);
+  padding: 0 var(--control-px);
+  border: var(--line) solid transparent;
+  border-radius: var(--radius-control);
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.ui-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ui-btn:active:not(:disabled) { transform: scale(0.98); }
+.ui-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ui-btn svg { width: 1.1em; height: 1.1em; flex-shrink: 0; }
+
+.ui-btn--primary { background: var(--color-green); color: #fff; }
+.ui-btn--primary:hover:not(:disabled)  { background: var(--color-green-hover); }
+.ui-btn--primary:active:not(:disabled) { background: var(--color-green-press); }
+
+.ui-btn--secondary { background: var(--color-bg); color: var(--color-text); border-color: var(--line-strong); }
+.ui-btn--secondary:hover:not(:disabled)  { background: var(--color-surface); border-color: var(--color-text-subtle); }
+.ui-btn--secondary:active:not(:disabled) { background: var(--line-color); }
+
+.ui-btn--ghost { background: transparent; color: var(--color-green); }
+.ui-btn--ghost:hover:not(:disabled)  { background: var(--color-green-tint); }
+.ui-btn--ghost:active:not(:disabled) { background: var(--color-green-pale); }
+
+.ui-btn--danger { background: var(--color-bg); color: var(--color-error); border-color: var(--line-strong); }
+.ui-btn--danger:hover:not(:disabled) { background: var(--color-error-tint); border-color: var(--color-error); }
+
+.ui-btn--sm { min-height: var(--control-h-sm); padding: 0 var(--space-3); font-size: var(--type-small); }
+.ui-btn--icon { width: var(--control-h); padding: 0; }
+.ui-btn--icon.ui-btn--sm { width: var(--control-h-sm); }
+.ui-btn--block { width: 100%; }
+
+.ui-spinner {
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ─── Cards ────────────────────────────────────────────────────────────────── */
+
+.ui-card {
+  background: var(--color-bg);
+  border: var(--line) solid var(--line-color);
+  border-radius: var(--radius-card);
+  padding: var(--card-pad);
+}
+.ui-card--flush { padding: 0; overflow: hidden; }
+.ui-card--muted { background: var(--color-surface); border-color: transparent; }
+.ui-card--interactive {
+  display: block;
+  width: 100%;
+  text-align: left;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.ui-card--interactive:hover { border-color: var(--line-strong); box-shadow: var(--shadow-raised); }
+.ui-card--interactive:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.ui-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+/* A list of rows inside a card, divided by thin lines */
+.ui-list { list-style: none; margin: 0; padding: 0; }
+.ui-list > li + li { border-top: var(--line) solid var(--line-color); }
+.ui-list-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control-h);
+  padding: var(--space-3) var(--card-pad);
+}
+
+/* ─── Inputs ───────────────────────────────────────────────────────────────── */
+
+.ui-field { display: flex; flex-direction: column; gap: var(--space-1); }
+.ui-field__label { font-size: var(--type-small); font-weight: 600; color: var(--color-text); margin: 0; }
+.ui-field__hint  { font-size: var(--type-small); color: var(--color-text-subtle); }
+.ui-field__error { font-size: var(--type-small); color: var(--color-error); }
+
+.ui-input,
+.ui-select,
+.ui-textarea {
+  width: 100%;
+  min-height: var(--control-h);
+  padding: 0 var(--control-px);
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: var(--line) solid var(--line-strong);
+  border-radius: var(--radius-control);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.ui-textarea { padding: var(--space-2) var(--control-px); min-height: calc(var(--control-h) * 2.5); resize: vertical; line-height: 1.5; }
+.ui-input:hover, .ui-select:hover, .ui-textarea:hover { border-color: var(--color-text-subtle); }
+.ui-input:focus, .ui-select:focus, .ui-textarea:focus { outline: none; border-color: var(--color-green); box-shadow: var(--focus-ring); }
+.ui-input::placeholder, .ui-textarea::placeholder { color: var(--color-text-subtle); }
+.ui-input[aria-invalid="true"] { border-color: var(--color-error); }
+.ui-input:disabled, .ui-select:disabled { background: var(--color-surface); cursor: not-allowed; }
+
+.ui-select {
+  appearance: none;
+  padding-right: calc(var(--control-px) + 20px);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b6f68' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--control-px) center;
+  cursor: pointer;
+}
+
+/* Search box with a magnifier inside */
+.ui-search { position: relative; flex: 1; min-width: 0; }
+.ui-search svg {
+  position: absolute;
+  left: var(--control-px);
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  color: var(--color-text-subtle);
+  pointer-events: none;
+}
+.ui-search .ui-input { padding-left: calc(var(--control-px) + 24px); }
+
+.ui-check { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--type-body); cursor: pointer; margin: 0; font-weight: 400; }
+.ui-check input { width: 18px; height: 18px; min-height: 0; accent-color: var(--color-green); }
+
+/* ─── Tags and chips ───────────────────────────────────────────────────────── */
+
+.ui-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 22px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--type-label);
+  font-weight: 600;
+  background: var(--color-surface);
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+}
+.ui-tag--green { background: var(--color-green-tint); color: var(--color-green); }
+.ui-tag--warn  { background: #fdf3e7; color: #8a4b0f; }
+.ui-tag--error { background: var(--color-error-tint); color: var(--color-error); }
+
+/* Removable filter chip: shows an applied filter on the page */
+.ui-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-h-sm);
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border: var(--line) solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  font-size: var(--type-small);
+  color: var(--color-text);
+}
+.ui-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+}
+.ui-chip button:hover { background: var(--color-surface); color: var(--color-text); }
+.ui-chip button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ui-chip svg { width: 14px; height: 14px; }
+
+/* Segmented control: pick one of a few views */
+.ui-segmented {
+  display: inline-flex;
+  padding: 2px;
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+}
+.ui-segmented button {
+  min-height: calc(var(--control-h-sm) - 4px);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: calc(var(--radius-control) - 2px);
+  background: none;
+  font-size: var(--type-small);
+  font-weight: 600;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+}
+.ui-segmented button[aria-pressed="true"] { background: var(--color-bg); color: var(--color-text); box-shadow: 0 1px 2px rgba(17, 17, 17, 0.08); }
+.ui-segmented button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ─── Swatches (preview page only) ─────────────────────────────────────────── */
+
+.ui-swatch { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--type-small); }
+.ui-swatch span:first-child { height: 40px; border-radius: var(--radius-control); border: var(--line) solid var(--line-color); }
+.ui-space-bar { height: 12px; background: var(--color-green-pale); border-radius: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-app-header, .ui-btn, .ui-card--interactive { transition: none; }
+  .ui-btn:active:not(:disabled) { transform: none; }
+}
+
+@media (min-width: 768px) {
+  .hide-on-desktop { display: none; }
+}
