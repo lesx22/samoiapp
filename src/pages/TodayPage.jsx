@@ -1,33 +1,44 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
-import { getActiveTasks, taskGuidance } from "../data/garden";
+import { getActiveTasks, taskGuidance, groupByZone, PROBABLY_DONE_AFTER_DAYS } from "../data/garden";
 
 const TODAY_LABEL = new Date().toLocaleDateString("en-GB", {
   day: "numeric", month: "long", year: "numeric",
 });
 
 export default function TodayPage() {
-  const { seeds, toggleTask, isTaskDone } = useSeedsContext();
+  const { seeds, zones, toggleTask, isTaskDone, markTasksDone } = useSeedsContext();
   const navigate = useNavigate();
+  const [showDone, setShowDone] = useState(false);
 
-  // Build flat list of all actionable tasks across seeds
-  const allTaskItems = seeds.flatMap(seed =>
-    getActiveTasks(seed).map(task => ({ seed, task }))
+  const allTaskItems = seeds.flatMap(seed => getActiveTasks(seed).map(task => ({ seed, task })));
+  const pending = allTaskItems.filter(({ seed, task }) => !isTaskDone(seed.id, task.type));
+  const done    = allTaskItems.filter(({ seed, task }) =>  isTaskDone(seed.id, task.type));
+  const current = pending.filter(({ task }) => task.status === "current");
+  const overdue = pending.filter(({ task }) => task.status === "overdue" && task.daysOverdue <= PROBABLY_DONE_AFTER_DAYS);
+  const stale   = pending.filter(({ task }) => task.status === "overdue" && task.daysOverdue > PROBABLY_DONE_AFTER_DAYS);
+
+  const row = ({ seed, task }, isDone = false) => (
+    <TaskRow
+      key={`${seed.id}-${task.type}`}
+      seed={seed}
+      task={task}
+      done={isDone}
+      onToggle={() => toggleTask(seed.id, task.type)}
+      onNavigate={() => navigate(`/seeds/${seed.id}`)}
+    />
   );
-
-  const pending  = allTaskItems.filter(({ seed, task }) => !isTaskDone(seed.id, task.type));
-  const done     = allTaskItems.filter(({ seed, task }) =>  isTaskDone(seed.id, task.type));
-  const overdue  = pending.filter(({ task }) => task.status === "overdue");
-  const current  = pending.filter(({ task }) => task.status === "current");
 
   return (
     <div className="page">
       <div style={{ marginBottom: "var(--space-xl)" }}>
         <h1 style={{ marginBottom: "var(--space-xs)" }}>{TODAY_LABEL}</h1>
-        <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)" }}>
-          Your prioritised action list
-        </p>
+        {seeds.length > 0 && (
+          <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)" }}>
+            {summary(current.length, overdue.length, stale.length)}
+          </p>
+        )}
       </div>
 
       {seeds.length === 0 && (
@@ -37,60 +48,58 @@ export default function TodayPage() {
         </div>
       )}
 
-      {/* Overdue */}
+      {current.length > 0 && (
+        <section style={{ marginBottom: "var(--space-xl)" }}>
+          <SectionHeader label="To do now" color="var(--color-green)" />
+          {groupByZone(current, zones).map(g => (
+            <ZoneGroup key={g.zone?.id ?? "none"} zone={g.zone} count={g.items.length}>
+              {g.items.map(item => row(item))}
+            </ZoneGroup>
+          ))}
+        </section>
+      )}
+
       {overdue.length > 0 && (
         <section style={{ marginBottom: "var(--space-xl)" }}>
           <SectionHeader label="Overdue" color="var(--color-error)" />
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
-            {overdue.map(({ seed, task }) => (
-              <TaskRow
-                key={`${seed.id}-${task.type}`}
-                seed={seed}
-                task={task}
-                done={false}
-                onToggle={() => toggleTask(seed.id, task.type)}
-                onNavigate={() => navigate(`/seeds/${seed.id}`)}
-              />
-            ))}
-          </div>
+          {groupByZone(overdue, zones).map(g => (
+            <ZoneGroup key={g.zone?.id ?? "none"} zone={g.zone} count={g.items.length}>
+              {g.items.map(item => row(item))}
+            </ZoneGroup>
+          ))}
         </section>
       )}
 
-      {/* Act now */}
-      {current.length > 0 && (
+      {stale.length > 0 && (
         <section style={{ marginBottom: "var(--space-xl)" }}>
-          <SectionHeader label="Act now" color="var(--color-green)" />
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
-            {current.map(({ seed, task }) => (
-              <TaskRow
-                key={`${seed.id}-${task.type}`}
-                seed={seed}
-                task={task}
-                done={false}
-                onToggle={() => toggleTask(seed.id, task.type)}
-                onNavigate={() => navigate(`/seeds/${seed.id}`)}
-              />
-            ))}
-          </div>
+          <SectionHeader label="Probably already done" color="var(--color-text-muted)" />
+          <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)", margin: "0 0 var(--space-md)" }}>
+            These windows ended more than {PROBABLY_DONE_AFTER_DAYS} days ago. If you did them, clear an area in one go.
+          </p>
+          {groupByZone(stale, zones).map(g => (
+            <StaleGroup
+              key={g.zone?.id ?? "none"}
+              zone={g.zone}
+              items={g.items}
+              onMarkAllDone={() => markTasksDone(g.items.map(({ seed, task }) => ({ seedId: seed.id, taskType: task.type })))}
+              renderRow={item => row(item)}
+            />
+          ))}
         </section>
       )}
 
-      {/* Done */}
       {done.length > 0 && (
         <section style={{ marginBottom: "var(--space-xl)" }}>
-          <SectionHeader label={`Done (${done.length})`} color="var(--color-text-muted)" />
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
-            {done.map(({ seed, task }) => (
-              <TaskRow
-                key={`${seed.id}-${task.type}`}
-                seed={seed}
-                task={task}
-                done={true}
-                onToggle={() => toggleTask(seed.id, task.type)}
-                onNavigate={() => navigate(`/seeds/${seed.id}`)}
-              />
-            ))}
-          </div>
+          <h2 className="section-label" style={{ color: "var(--color-text-muted)" }}>
+            <button type="button" className="disclosure disclosure--heading" aria-expanded={showDone} aria-controls="done-tasks" onClick={() => setShowDone(v => !v)}>
+              Done ({done.length})
+            </button>
+          </h2>
+          {showDone && (
+            <div id="done-tasks" className="task-list">
+              {done.map(item => row(item, true))}
+            </div>
+          )}
         </section>
       )}
 
@@ -111,21 +120,54 @@ export default function TodayPage() {
   );
 }
 
+function summary(now, overdue, stale) {
+  const parts = [];
+  if (now) parts.push(`${now} to do now`);
+  if (overdue) parts.push(`${overdue} overdue`);
+  if (stale) parts.push(`${stale} probably already done`);
+  return parts.length ? parts.join(" · ") : "Nothing to do right now";
+}
+
+function zoneName(zone) {
+  return zone ? `${zone.emoji ? `${zone.emoji} ` : ""}${zone.name}` : "No zone";
+}
+
+// One area's tasks under a small heading with a count
+function ZoneGroup({ zone, count, children }) {
+  return (
+    <div className="zone-group">
+      <h3 className="zone-group__title">
+        <span>{zoneName(zone)}</span>
+        <span className="zone-group__count">{count}</span>
+      </h3>
+      <div className="task-list">{children}</div>
+    </div>
+  );
+}
+
+// A collapsed bundle of old tasks for one area, cleared with one button
+function StaleGroup({ zone, items, onMarkAllDone, renderRow }) {
+  const [open, setOpen] = useState(false);
+  const listId = `stale-${zone?.id ?? "none"}`;
+  return (
+    <div className="stale-group">
+      <div className="stale-group__bar">
+        <button type="button" className="disclosure stale-group__toggle" aria-expanded={open} aria-controls={listId} onClick={() => setOpen(v => !v)}>
+          {zoneName(zone)} · {items.length} task{items.length !== 1 ? "s" : ""}
+        </button>
+        <button type="button" className="btn-secondary stale-group__clear" onClick={onMarkAllDone}>
+          Mark all done
+        </button>
+      </div>
+      {open && <div id={listId} className="task-list" style={{ marginTop: "var(--space-sm)" }}>{items.map(renderRow)}</div>}
+    </div>
+  );
+}
+
 // ─── Shared components ────────────────────────────────────────────────────────
 
 function SectionHeader({ label, color }) {
-  return (
-    <div style={{
-      fontSize: "var(--text-nav)",
-      fontWeight: 700,
-      color,
-      textTransform: "uppercase",
-      letterSpacing: "0.1em",
-      marginBottom: "var(--space-md)",
-    }}>
-      {label}
-    </div>
-  );
+  return <h2 className="section-label" style={{ color }}>{label}</h2>;
 }
 
 export function TaskRow({ seed, task, done, onToggle, onNavigate }) {
@@ -204,7 +246,7 @@ export function TaskRow({ seed, task, done, onToggle, onNavigate }) {
         </div>
 
         {!done && !animating && guidance && task.status === "current" && (
-          <p style={{
+          <p className="clamp-2" title={guidance} style={{
             fontSize: "var(--text-small)",
             color: "var(--color-text-muted)",
             lineHeight: 1.5,

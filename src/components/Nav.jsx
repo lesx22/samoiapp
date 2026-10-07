@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
-import { getActiveTasks } from "../data/garden";
+import { getActiveTasks, PROBABLY_DONE_AFTER_DAYS } from "../data/garden";
 import { supabase } from "../lib/supabase";
 
 const NAV_ITEMS = [
@@ -13,8 +13,9 @@ const NAV_ITEMS = [
 
 export default function Nav({ session }) {
   const { seeds, isTaskDone } = useSeedsContext();
+  // Badge counts what needs doing, not old tasks that were probably done
   const urgentCount = seeds.flatMap(s =>
-    getActiveTasks(s).filter(t => !isTaskDone(s.id, t.type))
+    getActiveTasks(s).filter(t => !isTaskDone(s.id, t.type) && !(t.daysOverdue > PROBABLY_DONE_AFTER_DAYS))
   ).length;
 
   return (
