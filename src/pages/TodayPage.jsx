@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
-import { getActiveTasks } from "../data/garden";
+import { getActiveTasks, taskGuidance } from "../data/garden";
 
 const TODAY_LABEL = new Date().toLocaleDateString("en-GB", {
   day: "numeric", month: "long", year: "numeric",
@@ -130,6 +130,7 @@ function SectionHeader({ label, color }) {
 
 export function TaskRow({ seed, task, done, onToggle, onNavigate }) {
   const [animating, setAnimating] = useState(false);
+  const guidance = taskGuidance(seed, task.type);
 
   function handleCheck(e) {
     e.stopPropagation();
@@ -202,14 +203,14 @@ export function TaskRow({ seed, task, done, onToggle, onNavigate }) {
           </span>
         </div>
 
-        {!done && !animating && seed.immediateNextStep && task.status === "current" && (
+        {!done && !animating && guidance && task.status === "current" && (
           <p style={{
             fontSize: "var(--text-small)",
             color: "var(--color-text-muted)",
             lineHeight: 1.5,
             margin: "var(--space-xs) 0 0",
           }}>
-            {seed.immediateNextStep}
+            {guidance}
           </p>
         )}
       </div>
