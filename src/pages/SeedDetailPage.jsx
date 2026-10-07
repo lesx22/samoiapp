@@ -109,15 +109,17 @@ export default function SeedDetailPage() {
         <div style={{ display: "flex", gap: "var(--space-sm)" }}>
           <button
             onClick={() => setEditModalOpen(true)}
-            style={{ fontSize: "var(--text-small)", background: "none", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", borderRadius: "var(--radius-sm)", padding: "var(--space-xs) var(--space-md)", minHeight: "auto", cursor: "pointer" }}
+            aria-label="Edit plant"
+            style={{ whiteSpace: "nowrap", fontSize: "var(--text-small)", background: "none", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", borderRadius: "var(--radius-sm)", padding: "var(--space-xs) var(--space-md)", minHeight: "auto", cursor: "pointer" }}
           >
-            ✎ Edit
+            ✎<span className="hide-on-phone"> Edit</span>
           </button>
           <button
             onClick={() => setRefetchModalOpen(true)}
-            style={{ fontSize: "var(--text-small)", background: "none", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", borderRadius: "var(--radius-sm)", padding: "var(--space-xs) var(--space-md)", minHeight: "auto", cursor: "pointer" }}
+            aria-label="Re-fetch plant details"
+            style={{ whiteSpace: "nowrap", fontSize: "var(--text-small)", background: "none", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", borderRadius: "var(--radius-sm)", padding: "var(--space-xs) var(--space-md)", minHeight: "auto", cursor: "pointer" }}
           >
-            ↻ Re-fetch
+            ↻<span className="hide-on-phone"> Re-fetch</span>
           </button>
           <button
             onClick={handleRemove}
@@ -162,7 +164,7 @@ export default function SeedDetailPage() {
         borderBottom: "1.5px solid var(--color-border)",
         marginBottom: "var(--space-xl)",
         overflowX: "auto",
-      }}>
+      }} className="tab-row">
         {DETAIL_TABS.map((tab, i) => (
           <button
             key={tab}

@@ -258,6 +258,17 @@ label {
   .top-nav    { display: flex; }
 }
 
+/* Phones: tab rows share the width so every tab fits, and long button labels
+   collapse to their icon. !important beats the inline padding on the tabs. */
+@media (max-width: 767px) {
+  .tab-row > button {
+    flex: 1 0 auto;
+    padding-left: var(--space-xs) !important;
+    padding-right: var(--space-xs) !important;
+  }
+  .hide-on-phone { display: none; }
+}
+
 /* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 6px; background: var(--color-bg); }
