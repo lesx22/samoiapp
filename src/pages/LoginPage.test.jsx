@@ -3,9 +3,9 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import LoginPage from "./LoginPage";
 
-const { resetPasswordForEmail } = vi.hoisted(() => ({ resetPasswordForEmail: vi.fn() }));
+const { resetPasswordForEmail, signInWithOtp } = vi.hoisted(() => ({ resetPasswordForEmail: vi.fn(), signInWithOtp: vi.fn() }));
 vi.mock("../lib/supabase", () => ({
-  supabase: { auth: { resetPasswordForEmail } },
+  supabase: { auth: { resetPasswordForEmail, signInWithOtp } },
 }));
 
 async function openResetForm(user) {
@@ -52,5 +52,22 @@ describe("LoginPage forgot password", () => {
 
     expect(screen.getByRole("heading", { name: "Sign in" })).toBeInTheDocument();
     expect(screen.getByPlaceholderText("••••••••")).toBeInTheDocument();
+  });
+});
+
+describe("LoginPage magic link", () => {
+  it("never creates a new account for an unknown email", async () => {
+    signInWithOtp.mockResolvedValue({ error: null });
+    const user = userEvent.setup();
+    render(<LoginPage />);
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+    await user.click(screen.getByRole("button", { name: "Magic link" }));
+    await user.type(screen.getByPlaceholderText("you@example.com"), "stranger@example.com");
+    await user.click(screen.getByRole("button", { name: "Send magic link" }));
+
+    expect(signInWithOtp).toHaveBeenCalledWith({
+      email: "stranger@example.com",
+      options: { emailRedirectTo: window.location.origin, shouldCreateUser: false },
+    });
   });
 });

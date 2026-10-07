@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-07 (data lockdown)
+- **fix:** SQL migration turns on Row Level Security for every table and the photo bucket, so only signed-in users can read or write data.
+- **fix:** magic link no longer creates accounts for unknown emails (`shouldCreateUser: false`).
+- **chore:** `scripts/check-public-access.mjs` reports what a logged-out visitor can read.
+
 ## 2026-10-07 (security)
 - **fix:** the Anthropic API key no longer ships to the browser. Claude calls go through a new `/api/claude` Vercel function that requires a Supabase login and fixes the model and token cap server-side.
 - **fix:** photos are shrunk to 1568px before sending, to stay under Vercel's 4.5 MB request limit.
