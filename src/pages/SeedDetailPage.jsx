@@ -4,6 +4,7 @@ import { useSeedsContext } from "../context/SeedsContext";
 import { badge, taskGuidance, MONTHS, TODAY_M } from "../data/garden";
 import { chatAboutPlant } from "../lib/claude";
 import UploadModal from "../components/UploadModal";
+import { friendlyFetchError } from "../lib/errors";
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -26,6 +27,13 @@ export default function SeedDetailPage() {
     if (id) loadPlantTasks(id);
   }, [id, loadPlantTasks]);
   const seed = getSeed(id);
+
+  // One click used to delete straight away; ask first because it can't be undone
+  function handleRemove() {
+    if (!window.confirm(`Remove ${seed.name}? This can't be undone.`)) return;
+    removeSeed(id);
+    navigate("/seeds");
+  }
 
   if (!seed) {
     return (
@@ -74,10 +82,12 @@ export default function SeedDetailPage() {
           <div>
             <h1 style={{ fontSize: "var(--text-h2)", marginBottom: "var(--space-xs)" }}>{seed.name}</h1>
             <p style={{ color: "var(--color-error)", fontSize: "var(--text-small)", margin: 0 }}>Something went wrong fetching this plant's data.</p>
+            <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)", margin: "var(--space-xs) 0 0" }}>{friendlyFetchError(seed.fetchError)}</p>
           </div>
         </div>
-        <div style={{ display: "flex", gap: "var(--space-sm)" }}>
+        <div style={{ display: "flex", gap: "var(--space-sm)", flexWrap: "wrap" }}>
           <button className="btn-primary" onClick={() => setRefetchModalOpen(true)}>↻ Try again</button>
+          <button className="btn-secondary" onClick={handleRemove} style={{ color: "var(--color-error)", borderColor: "var(--color-error)" }}>Remove</button>
           <button className="btn-secondary" onClick={() => navigate("/seeds")}>Back to Plants</button>
         </div>
         {refetchModalOpen && (
@@ -110,7 +120,7 @@ export default function SeedDetailPage() {
             ↻ Re-fetch
           </button>
           <button
-            onClick={() => { removeSeed(id); navigate("/seeds"); }}
+            onClick={handleRemove}
             style={{ fontSize: "var(--text-small)", background: "none", border: "1px solid var(--color-error)", color: "var(--color-error)", borderRadius: "var(--radius-sm)", padding: "var(--space-xs) var(--space-md)", minHeight: "auto", cursor: "pointer" }}
           >
             Remove
