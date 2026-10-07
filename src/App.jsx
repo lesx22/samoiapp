@@ -1,19 +1,21 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SeedsProvider, useSeedsContext } from "./context/SeedsContext";
 import { supabase } from "./lib/supabase";
 import Nav from "./components/Nav";
-import UploadModal from "./components/UploadModal";
 import LoginPage from "./pages/LoginPage";
-import HomePage from "./pages/HomePage";
-import SeedsPage from "./pages/SeedsPage";
-import SeedDetailPage from "./pages/SeedDetailPage";
-import TodayPage from "./pages/TodayPage";
-import CalendarPage from "./pages/CalendarPage";
-import ZonePage from "./pages/ZonePage";
-import GardenPage from "./pages/GardenPage";
-import ZoneDetailPage from "./pages/ZoneDetailPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+
+// Signed-in pages load on demand, so the login screen doesn't wait for them
+const UploadModal    = lazy(() => import("./components/UploadModal"));
+const HomePage       = lazy(() => import("./pages/HomePage"));
+const SeedsPage      = lazy(() => import("./pages/SeedsPage"));
+const SeedDetailPage = lazy(() => import("./pages/SeedDetailPage"));
+const TodayPage      = lazy(() => import("./pages/TodayPage"));
+const CalendarPage   = lazy(() => import("./pages/CalendarPage"));
+const ZonePage       = lazy(() => import("./pages/ZonePage"));
+const GardenPage     = lazy(() => import("./pages/GardenPage"));
+const ZoneDetailPage = lazy(() => import("./pages/ZoneDetailPage"));
 
 function AppShell({ session }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -41,17 +43,21 @@ function AppShell({ session }) {
   return (
     <>
       <Nav session={session} />
-      <Routes>
-        <Route path="/"            element={<HomePage   onUpload={() => setModalOpen(true)} />} />
-        <Route path="/seeds"       element={<SeedsPage  onUpload={() => setModalOpen(true)} />} />
-        <Route path="/seeds/:id"   element={<SeedDetailPage />} />
-        <Route path="/today"       element={<TodayPage />} />
-        <Route path="/garden"      element={<GardenPage />} />
-        <Route path="/garden/:zoneId" element={<ZoneDetailPage />} />
-        <Route path="/calendar"    element={<CalendarPage />} />
-        <Route path="/zone"        element={<ZonePage />} />
-      </Routes>
-      <UploadModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+      <Suspense fallback={null}>
+        <Routes>
+          <Route path="/"            element={<HomePage   onUpload={() => setModalOpen(true)} />} />
+          <Route path="/seeds"       element={<SeedsPage  onUpload={() => setModalOpen(true)} />} />
+          <Route path="/seeds/:id"   element={<SeedDetailPage />} />
+          <Route path="/today"       element={<TodayPage />} />
+          <Route path="/garden"      element={<GardenPage />} />
+          <Route path="/garden/:zoneId" element={<ZoneDetailPage />} />
+          <Route path="/calendar"    element={<CalendarPage />} />
+          <Route path="/zone"        element={<ZonePage />} />
+        </Routes>
+      </Suspense>
+      <Suspense fallback={null}>
+        <UploadModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
+      </Suspense>
     </>
   );
 }
