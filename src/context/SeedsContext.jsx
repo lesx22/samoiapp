@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
+import { localDateString } from "../lib/dates";
 
 const GARDEN_NAME = "Grand Samoï";
 const SeedsContext = createContext(null);
@@ -253,7 +254,7 @@ export function SeedsProvider({ children }) {
   }, []);
 
   async function addDiaryEntry(seedId, entry) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateString();
     const { data, error } = await supabase
       .from("diary_entries")
       .insert({
@@ -389,7 +390,7 @@ export function SeedsProvider({ children }) {
   }, []);
 
   async function addZoneDiaryEntry(zoneId, { text, photo }) {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateString();
     const { data, error } = await supabase.from("zone_diary_entries").insert({ zone_id: zoneId, garden_id: gardenId, date: today, text, photo_url: photo ?? null }).select().single();
     if (error) { console.error("addZoneDiaryEntry:", error.message); return; }
     setZoneDiary(prev => ({ ...prev, [zoneId]: [{ id: data.id, date: data.date, text: data.text, photo: data.photo_url ?? null }, ...(prev[zoneId] ?? [])] }));

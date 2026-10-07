@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "TZ=Europe/Paris vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.1",
