@@ -304,7 +304,7 @@ function OverviewTab({ seed, assignZone }) {
 
       {/* Key stats */}
       <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
-        <h3 style={{ marginBottom: "var(--space-md)" }}>Key Facts</h3>
+        <h2 className="h3" style={{ marginBottom: "var(--space-md)" }}>Key Facts</h2>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--space-md)" }}>
           {[
             ["Days to maturity", seed.daysToMaturity],
@@ -324,7 +324,7 @@ function OverviewTab({ seed, assignZone }) {
 
       {/* Planting calendar */}
       <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
-        <h3 style={{ marginBottom: "var(--space-md)" }}>Planting Calendar</h3>
+        <h2 className="h3" style={{ marginBottom: "var(--space-md)" }}>Planting Calendar</h2>
         <MonthBar months={seed.sowMonths} color="var(--color-green)" label="Sow" />
         <MonthBar months={seed.transplantMonths} color="#1d4ed8" label="Transplant" />
         <MonthBar months={seed.harvestMonths} color="#b45309" label="Harvest" />
@@ -333,7 +333,7 @@ function OverviewTab({ seed, assignZone }) {
       {/* Companions */}
       {(seed.companions?.length > 0 || seed.avoid?.length > 0) && (
         <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
-          <h3 style={{ marginBottom: "var(--space-md)" }}>Companion Planting</h3>
+          <h2 className="h3" style={{ marginBottom: "var(--space-md)" }}>Companion Planting</h2>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "var(--space-xs)" }}>
             {seed.companions?.map(c => (
               <span key={c} className="tag" style={{ background: "var(--color-green-pale)", color: "var(--color-green)" }}>✓ {c}</span>
@@ -348,7 +348,7 @@ function OverviewTab({ seed, assignZone }) {
       {/* Video resources */}
       {seed.youtubeVideos?.length > 0 && (
         <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
-          <h3 style={{ marginBottom: "var(--space-md)" }}>Video Guides</h3>
+          <h2 className="h3" style={{ marginBottom: "var(--space-md)" }}>Video Guides</h2>
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
             {seed.youtubeVideos.map((v, i) => (
               <a key={i} href={v.url} target="_blank" rel="noreferrer" style={{
@@ -476,7 +476,7 @@ function DiaryTab({ seedId, addDiaryEntry, getDiaryEntries }) {
     <div>
       {/* New entry */}
       <div className="card" style={{ marginBottom: "var(--space-xl)" }}>
-        <h3 style={{ marginBottom: "var(--space-md)" }}>Add a note</h3>
+        <h2 className="h3" style={{ marginBottom: "var(--space-md)" }}>Add a note</h2>
         <textarea
           value={text}
           onChange={e => setText(e.target.value)}

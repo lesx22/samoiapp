@@ -124,7 +124,7 @@ function SeedsTab({ seeds, zone, navigate }) {
         >
           <span style={{ fontSize: "2rem", lineHeight: 1, flexShrink: 0 }}>{seed.emoji || "🌱"}</span>
           <div style={{ flex: 1 }}>
-            <h3 style={{ marginBottom: "2px" }}>{seed.name}</h3>
+            <h2 className="h3" style={{ marginBottom: "2px" }}>{seed.name}</h2>
             {seed.variety && seed.variety !== "Standard" && (
               <p style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", color: "var(--color-green)", fontSize: "var(--text-small)", margin: 0 }}>
                 '{seed.variety}'
@@ -304,7 +304,7 @@ function ZoneDiaryTab({ zoneId, zone, seeds, getZoneDiaryEntries, addZoneDiaryEn
   return (
     <div>
       <div className="card" style={{ marginBottom: "var(--space-xl)" }}>
-        <h3 style={{ marginBottom: "var(--space-md)" }}>Add a zone note</h3>
+        <h2 className="h3" style={{ marginBottom: "var(--space-md)" }}>Add a zone note</h2>
         <textarea value={text} onChange={e => setText(e.target.value)} placeholder="What's happening in this zone today?" rows={3} style={{ marginBottom: "var(--space-md)", resize: "vertical" }} />
         <button className="btn-primary" onClick={handleSave} disabled={!text.trim() || saving} style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-lg)" }}>
           {saving ? "Saving…" : "Save entry"}

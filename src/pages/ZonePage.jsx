@@ -31,7 +31,7 @@ export default function ZonePage() {
 
       {/* Garden data */}
       <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
-        <h3 style={{ marginBottom: "var(--space-md)" }}>Garden Profile</h3>
+        <h2 className="h3" style={{ marginBottom: "var(--space-md)" }}>Garden Profile</h2>
         <div style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
@@ -63,7 +63,7 @@ export default function ZonePage() {
 
       {/* Normandy notes */}
       <div className="card" style={{ borderLeft: "4px solid var(--color-green)" }}>
-        <h3 style={{ marginBottom: "var(--space-md)" }}>Normandy Growing Notes</h3>
+        <h2 className="h3" style={{ marginBottom: "var(--space-md)" }}>Normandy Growing Notes</h2>
         <ul style={{ listStyle: "none", padding: 0, display: "flex", flexDirection: "column", gap: "var(--space-md)" }}>
           {NORMANDY_NOTES.map((note, i) => (
             <li key={i} style={{ display: "flex", gap: "var(--space-md)", alignItems: "flex-start" }}>

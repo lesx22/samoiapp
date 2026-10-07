@@ -25,12 +25,13 @@ const COLOR_DOTS = {
 // Wraps a <select> in a relative div and overlays a ▾ caret at a fixed right
 // offset — reliable on every browser, no data-URL encoding needed.
 
-function SelectWithCaret({ selectStyle, wrapStyle, value, onChange, children }) {
+function SelectWithCaret({ selectStyle, wrapStyle, value, onChange, label, children }) {
   return (
     <div style={{ position: "relative", display: "inline-block", ...wrapStyle }}>
       <select
         value={value}
         onChange={onChange}
+        aria-label={label}
         style={{
           appearance: "none",
           WebkitAppearance: "none",
@@ -227,6 +228,7 @@ export default function SeedsPage({ onUpload }) {
             </button>
           )}
           <SelectWithCaret
+            label="Sort plants"
             value={sort}
             onChange={e => setSort(e.target.value)}
             wrapStyle={{ flexShrink: 0 }}
@@ -351,9 +353,9 @@ export default function SeedsPage({ onUpload }) {
           color: "var(--color-text-muted)",
         }}>
           <div style={{ fontSize: "3rem", marginBottom: "var(--space-md)" }}>🌱</div>
-          <h3 style={{ marginBottom: "var(--space-sm)", color: "var(--color-text-muted)" }}>
+          <h2 className="h3" style={{ marginBottom: "var(--space-sm)", color: "var(--color-text-muted)" }}>
             No plants yet
-          </h3>
+          </h2>
           <p style={{ marginBottom: "var(--space-lg)" }}>
             Upload seed packet photos, paste a product URL or Google Doc, or search by name.
           </p>
@@ -559,7 +561,7 @@ function SeedCard({ seed, onClick }) {
           <span style={{ fontSize: "2.5rem", lineHeight: 1 }}>🌱</span>
           <span style={{ fontSize: "var(--text-nav)", color: "var(--color-text-muted)", fontStyle: "italic" }}>Identifying…</span>
         </div>
-        <h3 style={{ marginBottom: "var(--space-sm)" }}>{seed.name}</h3>
+        <h2 className="h3" style={{ marginBottom: "var(--space-sm)" }}>{seed.name}</h2>
         <div style={{ height: 3, background: "var(--color-border)", borderRadius: 2, overflow: "hidden" }}>
           <div className="animate-pulse" style={{ height: "100%", width: "40%", background: "var(--color-green)", borderRadius: 2 }} />
         </div>
@@ -613,7 +615,7 @@ function SeedCard({ seed, onClick }) {
         </span>
       </div>
 
-      <h3 style={{ marginBottom: "4px" }}>{seed.name}</h3>
+      <h2 className="h3" style={{ marginBottom: "4px" }}>{seed.name}</h2>
       {seed.variety && seed.variety !== "Standard" && (
         <p style={{
           fontFamily: "var(--font-serif)",
@@ -714,6 +716,7 @@ function FilterSelect({ label, value, onChange, options }) {
   return (
     <SelectWithCaret
       value={value}
+      label={`Filter by ${label.toLowerCase()}`}
       onChange={e => onChange(e.target.value)}
       selectStyle={{
         minHeight: 36,

@@ -43,6 +43,7 @@ function AppShell({ session }) {
   return (
     <>
       <Nav session={session} />
+      <main>
       <Suspense fallback={null}>
         <Routes>
           <Route path="/"            element={<HomePage   onUpload={() => setModalOpen(true)} />} />
@@ -55,6 +56,7 @@ function AppShell({ session }) {
           <Route path="/zone"        element={<ZonePage />} />
         </Routes>
       </Suspense>
+      </main>
       <Suspense fallback={null}>
         <UploadModal isOpen={modalOpen} onClose={() => setModalOpen(false)} />
       </Suspense>

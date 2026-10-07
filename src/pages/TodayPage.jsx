@@ -157,7 +157,7 @@ export function TaskRow({ seed, task, done, onToggle, onNavigate }) {
           ? "4px solid var(--color-green)"
           : `4px solid ${task.color}`,
         background: animating ? "var(--color-green)" : done ? "var(--color-bg)" : "var(--color-bg)",
-        opacity: animating ? 0 : done ? 0.5 : 1,
+        opacity: animating ? 0 : 1,
         // Green flash instant, then fade out after 250ms
         transition: animating
           ? "background 0.25s ease, border-color 0.25s ease, opacity 1s ease 0.9s"
@@ -185,7 +185,7 @@ export function TaskRow({ seed, task, done, onToggle, onNavigate }) {
                 fontStyle: "italic",
                 fontWeight: 400,
                 marginLeft: "var(--space-xs)",
-                color: animating ? "rgba(255,255,255,0.8)" : "var(--color-green)",
+                color: animating ? "rgba(255,255,255,0.8)" : done ? "var(--color-text-muted)" : "var(--color-green)",
               }}>
                 '{seed.variety}'
               </span>

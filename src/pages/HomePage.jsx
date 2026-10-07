@@ -29,7 +29,7 @@ export default function HomePage({ onUpload }) {
 
       {/* Garden summary */}
       <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
-        <h3 style={{ marginBottom: "var(--space-md)" }}>Your Garden</h3>
+        <h2 className="h3" style={{ marginBottom: "var(--space-md)" }}>Your Garden</h2>
         <div style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
@@ -74,7 +74,7 @@ export default function HomePage({ onUpload }) {
           justifyContent: "space-between",
           marginBottom: "var(--space-md)",
         }}>
-          <h3>Today</h3>
+          <h2 className="h3">Today</h2>
           <button
             className="btn-ghost"
             onClick={() => navigate("/today")}
