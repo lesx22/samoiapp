@@ -71,9 +71,14 @@ export function extractJSON(raw) {
 
 // ─── Structured seed extraction system prompt ─────────────────────────────────
 
-export const SEED_SYSTEM_PROMPT = `You are an expert horticulturist specialising in European home gardens and market growing.
+// "7 October 2026", so every prompt is calibrated to the real current date
+export function todayLabel(date = new Date()) {
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+}
+
+export const seedSystemPrompt = (today = todayLabel()) => `You are an expert horticulturist specialising in European home gardens and market growing.
 LOCATION: Condé-en-Normandy, France. Zone: RHS H4 / USDA 8b. Oceanic Cfb climate.
-TODAY: April 5 2026. Last frost ~mid-April. First frost ~early November. Plot 1/8 acre ~500m².
+TODAY: ${today}. Last frost ~mid-April. First frost ~early November. Plot 1/8 acre ~500m².
 Gardener uses soil blocks, grows in-ground or raised beds.
 
 Tasks:
@@ -82,7 +87,7 @@ Tasks:
 - For URL input: fetch that URL, read the product page, extract all data.
 - Then: search manufacturer website + authoritative sources (RHS, extension services) for growing detail.
 - Find 2-3 YouTube video search URLs relevant to growing this specific plant/variety.
-- Calibrate ALL advice to Normandy zone, oceanic climate, April 5 2026.
+- Calibrate ALL advice to Normandy zone, oceanic climate, ${today}.
 
 CRITICAL: Return ONLY valid JSON. No markdown fences. No preamble. No trailing text after the closing brace.
 
@@ -106,7 +111,7 @@ JSON schema (use null for unknown fields):
   "sowMonths": [4,5],
   "transplantMonths": [5,6],
   "harvestMonths": [7,8,9],
-  "currentAdvice": "Specific actionable paragraph for April 5 Normandy",
+  "currentAdvice": "Specific actionable paragraph for ${today} in Normandy",
   "immediateNextStep": "Single most important action TODAY",
   "indoorCare": {
     "temperature": "e.g. 22-26C day 18C night",
@@ -209,7 +214,7 @@ export async function fromImageQuick(b64, rawType, filename) {
 
 export async function fromImage(b64, rawType, filename) {
   const mime = normaliseMime(rawType, filename);
-  const raw = await callClaude(SEED_SYSTEM_PROMPT, [{
+  const raw = await callClaude(seedSystemPrompt(), [{
     role: "user",
     content: [
       { type: "image", source: { type: "base64", media_type: mime, data: b64 } },
@@ -220,7 +225,7 @@ export async function fromImage(b64, rawType, filename) {
 }
 
 export async function fromText(name) {
-  const raw = await callClaude(SEED_SYSTEM_PROMPT, [{
+  const raw = await callClaude(seedSystemPrompt(), [{
     role: "user",
     content: `Plant name: "${name}". Search trueleafmarket.com and johnnyseeds.com for the specific product page URL for this exact variety — set brandWebsite to that direct product URL. Then search for detailed growing guides and YouTube videos. Return ONLY the JSON object — nothing else.`,
   }]);
@@ -228,7 +233,7 @@ export async function fromText(name) {
 }
 
 export async function fromURL(url) {
-  const raw = await callClaude(SEED_SYSTEM_PROMPT, [{
+  const raw = await callClaude(seedSystemPrompt(), [{
     role: "user",
     content: `Seed product URL: ${url}\n\nFetch this URL, read the page, extract all plant and growing data. If the page is thin on detail, search authoritative sources for the specific variety. Find 2-3 YouTube growing videos. Return ONLY the JSON object — nothing else.`,
   }]);
@@ -317,7 +322,7 @@ export async function fromGoogleDoc(docText) {
 // ─── Conversational plant chat (no JSON schema) ────────────────────────────────
 
 export async function chatAboutPlant(plantName, messages) {
-  const system = `You are a friendly, knowledgeable gardening assistant specialising in the home garden at Condé-en-Normandy, France (Zone RHS H4 / USDA 8b, oceanic climate). The user is asking specifically about their ${plantName}. Give practical, clear advice. Keep responses concise — 2-4 sentences unless a longer answer is genuinely needed. Today is April 2026.`;
+  const system = `You are a friendly, knowledgeable gardening assistant specialising in the home garden at Condé-en-Normandy, France (Zone RHS H4 / USDA 8b, oceanic climate). The user is asking specifically about their ${plantName}. Give practical, clear advice. Keep responses concise — 2-4 sentences unless a longer answer is genuinely needed. Today is ${todayLabel()}.`;
 
   const raw = await callClaude(system, messages);
   return raw;
