@@ -22,6 +22,14 @@ export default function LoginPage() {
       });
       setLoading(false);
       if (error) { setError(error.message); return; }
+    } else if (mode === "reset") {
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        email.trim().toLowerCase(),
+        { redirectTo: window.location.origin },
+      );
+      setLoading(false);
+      if (error) { setError(error.message); return; }
+      setSent(true);
     } else {
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
@@ -137,9 +145,9 @@ export default function LoginPage() {
           <div className="card" style={{ width: "100%", maxWidth: 400 }}>
             {!sent ? (
               <>
-                <h2 style={{ marginBottom: "var(--space-xl)" }}>Sign in</h2>
+                <h2 style={{ marginBottom: "var(--space-xl)" }}>{mode === "reset" ? "Reset password" : "Sign in"}</h2>
                 {/* Mode toggle */}
-                <div style={{ display: "flex", background: "var(--color-border)", borderRadius: "var(--radius-sm)", padding: 3, marginBottom: "var(--space-xl)" }}>
+                {mode !== "reset" && <div style={{ display: "flex", background: "var(--color-border)", borderRadius: "var(--radius-sm)", padding: 3, marginBottom: "var(--space-xl)" }}>
                   {[["password", "Password"], ["magic", "Magic link"]].map(([val, label]) => (
                     <button key={val} type="button" onClick={() => { setMode(val); setError(null); }}
                       style={{ flex: 1, padding: "var(--space-xs) 0", fontSize: "var(--text-small)", fontWeight: 600, border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", minHeight: "auto", transition: "background 0.15s, color 0.15s",
@@ -150,7 +158,7 @@ export default function LoginPage() {
                       {label}
                     </button>
                   ))}
-                </div>
+                </div>}
                 <form onSubmit={handleSubmit}>
                   <label style={{ display: "block", fontSize: "var(--text-small)", fontWeight: 600, marginBottom: "var(--space-sm)" }}>
                     Email address
@@ -175,9 +183,21 @@ export default function LoginPage() {
                         onChange={e => setPassword(e.target.value)}
                         placeholder="••••••••"
                         required
-                        style={{ marginBottom: "var(--space-md)" }}
+                        style={{ marginBottom: "var(--space-sm)" }}
                       />
+                      <button
+                        type="button"
+                        onClick={() => { setMode("reset"); setError(null); }}
+                        style={{ display: "block", marginLeft: "auto", marginBottom: "var(--space-md)", background: "none", border: "none", padding: 0, minHeight: "auto", cursor: "pointer", color: "var(--color-text-muted)", fontSize: "var(--text-small)", textDecoration: "underline" }}
+                      >
+                        Forgot password?
+                      </button>
                     </>
+                  )}
+                  {mode === "reset" && (
+                    <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)", marginBottom: "var(--space-md)" }}>
+                      We'll email you a link to set a new password.
+                    </p>
                   )}
                   {mode === "magic" && (
                     <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)", marginBottom: "var(--space-md)" }}>
@@ -195,8 +215,18 @@ export default function LoginPage() {
                     disabled={!email.trim() || loading || (mode === "password" && !password)}
                     style={{ width: "100%", justifyContent: "center" }}
                   >
-                    {loading ? "Signing in…" : mode === "password" ? "Sign in" : "Send magic link"}
+                    {loading ? (mode === "password" ? "Signing in…" : "Sending…") : mode === "password" ? "Sign in" : mode === "reset" ? "Send reset link" : "Send magic link"}
                   </button>
+                  {mode === "reset" && (
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={() => { setMode("password"); setError(null); }}
+                      style={{ width: "100%", justifyContent: "center", marginTop: "var(--space-sm)", fontSize: "var(--text-small)" }}
+                    >
+                      Back to sign in
+                    </button>
+                  )}
                 </form>
               </>
             ) : (
@@ -204,7 +234,7 @@ export default function LoginPage() {
                 <div style={{ fontSize: "2.5rem", marginBottom: "var(--space-md)" }}>✉️</div>
                 <h2 style={{ marginBottom: "var(--space-sm)" }}>Check your email</h2>
                 <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)", lineHeight: 1.6 }}>
-                  We sent a sign-in link to<br />
+                  {mode === "reset" ? "We sent a password reset link to" : "We sent a sign-in link to"}<br />
                   <strong style={{ color: "var(--color-text)" }}>{email}</strong>
                 </p>
                 <button
