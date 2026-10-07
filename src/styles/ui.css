@@ -647,6 +647,122 @@
 .ui-task--completing { animation: uiTaskOut 400ms var(--ease) 800ms forwards; pointer-events: none; }
 @keyframes uiTaskOut { to { opacity: 0; } }
 
+/* ─── Season calendar ──────────────────────────────────────────────────────── */
+
+:root {
+  /* Season order, light to ripe: yellow sow, green transplant, pale green growing, terracotta harvest */
+  --cal-sow: #f2cc5b;
+  --cal-sow-text: #5c4300;
+  --cal-transplant: #3f8f5a;
+  --cal-growing: #d6ebdc;
+  --cal-growing-text: #2f6b43;
+  --cal-harvest: #c8553d;
+  --cal-name: 120px;
+  --cal-bar: 16px;
+}
+@media (min-width: 768px) {
+  :root { --cal-name: 240px; --cal-bar: 20px; }
+}
+
+.ui-cal-row {
+  display: grid;
+  grid-template-columns: var(--cal-name) repeat(12, minmax(0, 1fr));
+  gap: 2px;
+  align-items: center;
+  padding: var(--space-2) var(--card-pad);
+}
+/* Month headings sit in the toolbar; padding matches the card's border and padding */
+.ui-cal-head {
+  padding: 0 calc(var(--card-pad) + var(--line));
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--color-text-subtle);
+  text-align: center;
+}
+.ui-cal-head .ui-cal-now { color: var(--color-green); }
+
+.ui-cal-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-right: var(--space-2);
+  color: inherit;
+  text-decoration: none;
+}
+.ui-cal-name__title { font-size: var(--type-small); font-weight: 600; line-height: 1.3; }
+.ui-cal-name:hover { color: inherit; }
+.ui-cal-name:hover .ui-cal-name__title { text-decoration: underline; }
+.ui-cal-name:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
+@media (min-width: 768px) {
+  .ui-cal-name__title { font-size: var(--type-body); font-weight: 500; }
+}
+
+/* One month: empty is a faint bar; one to three tasks split it top to bottom */
+.ui-cal-cell {
+  display: flex;
+  flex-direction: column;
+  height: var(--cal-bar);
+  border-radius: 3px;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+.ui-cal-cell > span {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+}
+@media (min-width: 768px) {
+  .ui-cal-cell > span { font-size: 11px; }
+}
+.ui-cal-cell--now { box-shadow: 0 0 0 1.5px var(--color-green); }
+.ui-cal--sow { background: var(--cal-sow); color: var(--cal-sow-text) !important; }
+.ui-cal--transplant { background: var(--cal-transplant); }
+.ui-cal--growing { background: var(--cal-growing); color: var(--cal-growing-text) !important; }
+.ui-cal--harvest { background: var(--cal-harvest); }
+
+.ui-cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--type-small);
+  color: var(--color-text-subtle);
+}
+.ui-cal-legend li { display: inline-flex; align-items: center; gap: var(--space-2); }
+.ui-cal-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+.ui-cal-swatch--now { width: 14px; height: 14px; box-shadow: inset 0 0 0 1.5px var(--color-green); }
+
+/* Read by screen readers, not shown */
+.ui-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ─── Swatches (preview page only) ─────────────────────────────────────────── */
 
 .ui-swatch { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--type-small); }

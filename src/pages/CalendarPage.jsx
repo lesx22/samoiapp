@@ -1,136 +1,216 @@
+import { useState, useMemo, useId } from "react";
+import { Link } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
 import { MONTHS, TODAY_M } from "../data/garden";
+import { activeFilters } from "../lib/plantFilters";
+import { EMPTY_CAL_FILTERS, NO_ZONE, filterCalendar, groupCalendar, monthsFor, seasonSummary } from "../lib/calendar";
+import { Button, Card, SearchInput, Select, Chip, Sheet, OptionGroup, Icon, useHideOnScroll } from "../ui";
 
-const LEGEND = [
-  { color: "var(--color-green)", code: "S", label: "Sow" },
-  { color: "#1d4ed8", code: "T", label: "Transplant" },
-  { color: "#b45309", code: "H", label: "Harvest" },
+const TYPES = [
+  { value: "sow", label: "Sow" },
+  { value: "transplant", label: "Transplant" },
+  { value: "harvest", label: "Harvest" },
+];
+// Bars on the calendar, in season order. Growing isn't a task, so it isn't a filter.
+const PHASES = [
+  { value: "sow", label: "Sow", letter: "S" },
+  { value: "transplant", label: "Transplant", letter: "T" },
+  { value: "growing", label: "Growing", letter: "G" },
+  { value: "harvest", label: "Harvest", letter: "H" },
+];
+const TYPE_LABEL = Object.fromEntries(TYPES.map(t => [t.value, t.label]));
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+const GROUPS = [
+  { value: "category", label: "Category" },
+  { value: "zone", label: "Zone" },
+  { value: "none", label: "None (A to Z)" },
 ];
 
 export default function CalendarPage() {
-  const { seeds } = useSeedsContext();
+  const { seeds, zones } = useSeedsContext();
+  const toolbarHidden = useHideOnScroll();
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState(EMPTY_CAL_FILTERS);
+  const [draft, setDraft] = useState(EMPTY_CAL_FILTERS);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [groupBy, setGroupBy] = useState("category");
+
+  const filtered = useMemo(() => filterCalendar(seeds, search, filters), [seeds, search, filters]);
+  const groups = useMemo(() => groupCalendar(filtered, groupBy, zones), [filtered, groupBy, zones]);
+  const applied = activeFilters(filters);
+
+  const chipLabel = (key, value) => {
+    if (key === "zone") return value === NO_ZONE ? "No zone" : zones.find(z => z.id === value)?.name ?? value;
+    if (key === "type") return TYPE_LABEL[value];
+    if (key === "month") return MONTH_NAMES[value - 1];
+    return value;
+  };
 
   return (
-    <div className="page">
-      <div style={{ marginBottom: "var(--space-xl)" }}>
-        <h1 style={{ marginBottom: "var(--space-xs)" }}>Calendar</h1>
-        <p style={{ color: "var(--color-text-muted)", fontSize: "var(--text-small)" }}>
-          Your full growing season at a glance
-        </p>
+    <div className="ui-page">
+      <div className="ui-page-header">
+        <div>
+          <h1 className="ui-display">Calendar</h1>
+          <p className="ui-small">
+            {filtered.length === seeds.length ? `${seeds.length} plants` : `${filtered.length} of ${seeds.length} plants`}
+            {" · "}when to sow, transplant and harvest
+          </p>
+        </div>
+        <Legend />
       </div>
 
-      {seeds.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "var(--space-2xl) 0", color: "var(--color-text-muted)" }}>
-          <div style={{ fontSize: "3rem", marginBottom: "var(--space-md)" }}>▦</div>
-          <p>Add plants to see your planting calendar.</p>
-        </div>
-      ) : (
-        <div className="card" style={{ overflowX: "auto", padding: "var(--space-lg) var(--space-md)" }}>
-          <div style={{ minWidth: 640 }}>
-            {/* Month headers */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "160px repeat(12, 1fr)",
-              gap: 4,
-              marginBottom: "var(--space-sm)",
-            }}>
-              <div />
-              {MONTHS.map((m, i) => (
-                <div key={m} style={{
-                  textAlign: "center",
-                  fontSize: "var(--text-nav)",
-                  fontWeight: 700,
-                  fontFamily: "var(--font-sans)",
-                  color: i + 1 === TODAY_M ? "var(--color-green)" : "var(--color-text-muted)",
-                  borderBottom: i + 1 === TODAY_M ? "2px solid var(--color-green)" : "2px solid transparent",
-                  paddingBottom: 4,
-                  letterSpacing: "0.05em",
-                }}>
-                  {m.toUpperCase()}
-                </div>
-              ))}
+      {seeds.length === 0 && (
+        <Card variant="muted" style={{ textAlign: "center", padding: "var(--space-10) var(--space-6)" }}>
+          Add plants to see your planting calendar.
+        </Card>
+      )}
+
+      {seeds.length > 0 && (
+        <div className={`ui-toolbar${toolbarHidden ? " ui-toolbar--hidden" : ""}`}>
+          <div className="ui-toolbar__grid">
+            <div className="ui-toolbar__search">
+              <SearchInput label="Search plants" placeholder="Search plants" value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-
-            {/* Seed rows */}
-            {seeds.map(seed => (
-              <div key={seed.id} style={{
-                display: "grid",
-                gridTemplateColumns: "160px repeat(12, 1fr)",
-                gap: 4,
-                marginBottom: 4,
-                alignItems: "center",
-              }}>
-                <div style={{
-                  fontSize: "var(--text-small)",
-                  color: "var(--color-text)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  paddingRight: "var(--space-sm)",
-                  fontWeight: 500,
-                }}>
-                  {seed.emoji} {seed.name}
-                </div>
-                {MONTHS.map((_, i) => {
-                  const m = i + 1;
-                  const sow = seed.sowMonths?.includes(m);
-                  const tx  = seed.transplantMonths?.includes(m);
-                  const hv  = seed.harvestMonths?.includes(m);
-                  const now = m === TODAY_M;
-
-                  let bg = "var(--color-border)";
-                  let label = "";
-                  if (sow && hv) { bg = "linear-gradient(135deg, var(--color-green), #b45309)"; label = "S/H"; }
-                  else if (sow) { bg = "var(--color-green)"; label = "S"; }
-                  else if (tx)  { bg = "#1d4ed8"; label = "T"; }
-                  else if (hv)  { bg = "#b45309"; label = "H"; }
-
-                  return (
-                    <div key={m} style={{
-                      height: 28,
-                      background: bg,
-                      borderRadius: 4,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      color: (sow || tx || hv) ? "#fff" : "transparent",
-                      border: now ? "2px solid var(--color-green)" : "2px solid transparent",
-                      fontFamily: "var(--font-sans)",
-                    }}>
-                      {label}
-                    </div>
-                  );
-                })}
+            <Button variant="secondary" icon="filter" className="ui-toolbar__filter" aria-haspopup="dialog"
+              onClick={() => { setDraft(filters); setSheetOpen(true); }}>
+              Filter
+              {applied.length > 0 && <span className="ui-tag ui-tag--green" aria-label={`${applied.length} on`}>{applied.length}</span>}
+            </Button>
+            <div className="ui-row ui-toolbar__end">
+              <Select aria-label="Group plants by" value={groupBy} onChange={e => setGroupBy(e.target.value)}
+                style={{ width: "auto", minHeight: "var(--control-h-sm)", fontSize: "var(--type-small)" }}>
+                {GROUPS.map(g => <option key={g.value} value={g.value}>Group: {g.label}</option>)}
+              </Select>
+            </div>
+            {applied.length > 0 && (
+              <div className="ui-row ui-toolbar__chips">
+                {applied.map(([key, value]) => (
+                  <Chip key={key} onRemove={() => setFilters(f => ({ ...f, [key]: "" }))}>{chipLabel(key, value)}</Chip>
+                ))}
+                {applied.length > 1 && <Button variant="ghost" size="sm" onClick={() => setFilters(EMPTY_CAL_FILTERS)}>Clear all</Button>}
               </div>
+            )}
+          </div>
+          {/* Month headings stay in view with the toolbar, lined up with the rows below */}
+          <div className="ui-cal-row ui-cal-head" aria-hidden="true">
+            <span />
+            {MONTHS.map((m, i) => (
+              <span key={m} className={i + 1 === TODAY_M ? "ui-cal-now" : undefined}>
+                <span className="hide-on-phone">{m}</span>
+                <span className="hide-on-desktop">{m[0]}</span>
+              </span>
             ))}
-
-            {/* Legend */}
-            <div style={{
-              display: "flex",
-              gap: "var(--space-lg)",
-              marginTop: "var(--space-lg)",
-              flexWrap: "wrap",
-            }}>
-              {LEGEND.map(({ color, code, label }) => (
-                <div key={code} style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}>
-                  <div style={{ width: 16, height: 16, background: color, borderRadius: 3 }} />
-                  <span style={{ fontSize: "var(--text-small)", color: "var(--color-text-muted)", fontWeight: 500 }}>
-                    {code} — {label}
-                  </span>
-                </div>
-              ))}
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-xs)" }}>
-                <div style={{ width: 16, height: 16, border: "2px solid var(--color-green)", borderRadius: 3 }} />
-                <span style={{ fontSize: "var(--text-small)", color: "var(--color-text-muted)", fontWeight: 500 }}>
-                  Current month
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       )}
+
+      {seeds.length > 0 && filtered.length === 0 && (
+        <Card variant="muted" className="ui-stack" style={{ alignItems: "center", textAlign: "center", padding: "var(--space-10) var(--space-6)" }}>
+          <p>No plants match your search and filters.</p>
+          <Button variant="secondary" onClick={() => { setSearch(""); setFilters(EMPTY_CAL_FILTERS); }}>Clear search and filters</Button>
+        </Card>
+      )}
+
+      {filtered.length > 0 && (
+        <Card variant="flush">
+          {groups.map(g => <CalendarGroup key={g.key} group={g} />)}
+        </Card>
+      )}
+
+      <CalendarFilterSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        zones={zones}
+        hasNoZone={seeds.some(s => !s.zoneId)}
+        categories={[...new Set(seeds.map(s => s.category).filter(Boolean))].sort()}
+        draft={draft}
+        setDraft={setDraft}
+        count={filterCalendar(seeds, search, draft).length}
+        onApply={() => { setFilters(draft); setSheetOpen(false); }}
+      />
     </div>
+  );
+}
+
+function Legend() {
+  return (
+    <ul className="ui-cal-legend" aria-label="Key">
+      {PHASES.map(p => (
+        <li key={p.value}><span className={`ui-cal-swatch ui-cal--${p.value}`} aria-hidden="true">{p.letter}</span>{p.label}</li>
+      ))}
+      <li><span className="ui-cal-swatch ui-cal-swatch--now" />This month</li>
+    </ul>
+  );
+}
+
+function CalendarGroup({ group }) {
+  const [open, setOpen] = useState(true);
+  const listId = useId(); // group names can contain spaces, which ids cannot
+  return (
+    <section>
+      {group.label && (
+        <h2 className="ui-group-header">
+          <button type="button" className="ui-disclosure" aria-expanded={open} aria-controls={listId} onClick={() => setOpen(v => !v)}>
+            {group.label} <span className="ui-count">{group.seeds.length}</span>
+            <Icon name="chevronDown" width="16" height="16" />
+          </button>
+        </h2>
+      )}
+      {open && (
+        <ul id={listId} className="ui-list">
+          {group.seeds.map(seed => <li key={seed.id}><CalendarRow seed={seed} /></li>)}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function CalendarRow({ seed }) {
+  return (
+    <div className="ui-cal-row">
+      <Link to={`/seeds/${seed.id}`} className="ui-cal-name">
+        <span className="ui-cal-name__title ui-clamp-2">
+          <span aria-hidden="true">{seed.emoji || "🌱"} </span>{seed.name}
+        </span>
+        {seed.variety && seed.variety !== "Standard" && <span className="ui-small ui-truncate">{seed.variety}</span>}
+      </Link>
+      <span className="ui-visually-hidden">{seasonSummary(seed)}</span>
+      {MONTHS.map((_, i) => {
+        const m = i + 1;
+        const active = PHASES.filter(p => monthsFor(seed, p.value).includes(m));
+        return (
+          <span key={m} className={`ui-cal-cell${m === TODAY_M ? " ui-cal-cell--now" : ""}`} aria-hidden="true">
+            {/* A split month is too small for letters, so only single bars get one */}
+            {active.map(p => <span key={p.value} className={`ui-cal--${p.value}`}>{active.length === 1 ? p.letter : ""}</span>)}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function CalendarFilterSheet({ open, onClose, zones, hasNoZone, categories, draft, setDraft, count, onApply }) {
+  const set = key => value => setDraft(d => ({ ...d, [key]: value }));
+  return (
+    <Sheet
+      open={open}
+      title="Filter calendar"
+      onClose={onClose}
+      footer={<>
+        <Button variant="secondary" onClick={() => setDraft(EMPTY_CAL_FILTERS)}>Clear all</Button>
+        <Button onClick={onApply} disabled={count === 0}>
+          {count === 0 ? "No matches" : `Show ${count} plant${count === 1 ? "" : "s"}`}
+        </Button>
+      </>}
+    >
+      <OptionGroup label="Task" value={draft.type} onChange={set("type")} options={TYPES} />
+      <OptionGroup label="Month" value={draft.month} onChange={set("month")}
+        options={MONTHS.map((m, i) => ({ value: String(i + 1), label: m }))} />
+      <OptionGroup label="Zone" value={draft.zone} onChange={set("zone")}
+        options={[...zones.map(z => ({ value: z.id, label: z.name })), ...(hasNoZone ? [{ value: NO_ZONE, label: "No zone" }] : [])]} />
+      <OptionGroup label="Category" value={draft.category} onChange={set("category")}
+        options={categories.map(c => ({ value: c, label: c }))} />
+    </Sheet>
   );
 }
