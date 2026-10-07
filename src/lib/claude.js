@@ -1,21 +1,17 @@
+import { supabase } from "./supabase";
+
 // ─── Claude API ───────────────────────────────────────────────────────────────
+// Calls go through our /api/claude proxy, which holds the Anthropic key.
 
 export async function callClaude(system, messages, { maxTokens = 8000, _attempt = 0 } = {}) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch("/api/claude", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true",
+      Authorization: `Bearer ${session?.access_token ?? ""}`,
     },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: maxTokens,
-      system,
-      messages,
-      tools: [{ type: "web_search_20250305", name: "web_search" }],
-    }),
+    body: JSON.stringify({ system, messages, maxTokens }),
   });
 
   // Rate limited — wait and retry up to 3 times
