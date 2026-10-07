@@ -47,4 +47,8 @@ function gdocProxyPlugin() {
 
 export default defineConfig({
   plugins: [react(), gdocProxyPlugin()],
+  test: {
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.js',
+  },
 })
