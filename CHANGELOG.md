@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-10-07 (design rebuild, first pass)
+- **feat:** shared UI kit in `src/ui/` and `src/styles/ui.css`: one scale for spacing, corners, lines and text; primary, secondary, ghost and danger buttons; inputs, tags, filter chips, cards, list toolbar; phone sizes roomier, desktop denser. Preview at `/design`. No existing page changes yet.
+
 ## 2026-10-07 (data lockdown)
 - **fix:** SQL migration turns on Row Level Security for every table and the photo bucket, so only signed-in users can read or write data.
 - **fix:** magic link no longer creates accounts for unknown emails (`shouldCreateUser: false`).

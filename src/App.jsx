@@ -15,6 +15,7 @@ const TodayPage      = lazy(() => import("./pages/TodayPage"));
 const CalendarPage   = lazy(() => import("./pages/CalendarPage"));
 const GardenPage     = lazy(() => import("./pages/GardenPage"));
 const ZoneDetailPage = lazy(() => import("./pages/ZoneDetailPage"));
+const DesignPage     = lazy(() => import("./pages/DesignPage"));
 
 function AppShell({ session }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -52,6 +53,8 @@ function AppShell({ session }) {
           <Route path="/garden"      element={<GardenPage />} />
           <Route path="/garden/:zoneId" element={<ZoneDetailPage />} />
           <Route path="/calendar"    element={<CalendarPage />} />
+          {/* Preview of the shared UI kit; not linked from the nav */}
+          <Route path="/design"      element={<DesignPage />} />
           {/* The Zone page moved into Home; old links still land somewhere useful */}
           <Route path="/zone"        element={<Navigate to="/" replace />} />
         </Routes>
