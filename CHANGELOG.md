@@ -1,7 +1,7 @@
 # Changelog
 
 ## 2026-10-07 (Today page on the UI kit)
-- **feat:** Today rebuilt on the UI kit: search and a filter sheet (task type, zone, including "No zone"), each area in its own card showing 5 tasks then "Show more", "days late" on overdue tasks, thinner round tick boxes, shorter tick-then-remove animation. Home's Today card uses the same task row.
+- **feat:** Today rebuilt on the UI kit: search and a filter sheet (task type, zone, including "No zone"), each area in its own card with "Mark all done" in its header, showing 5 tasks then "Show more", "days late" on overdue tasks, thinner round tick boxes, shorter tick-then-remove animation. Home's Today card uses the same task row.
 - **fix:** Home's Today card showed tasks months overdue (for example "160 days late") that Today and the nav badge already treat as probably done; it now shows tasks due now first.
 
 ## 2026-10-07 (Plants page on the UI kit)

@@ -39,13 +39,21 @@ describe("Today", () => {
     expect(screen.getByText(/Wednesday 7 October · 1 to do now · 1 overdue · 2 probably already done/)).toBeInTheDocument();
 
     const now = screen.getByRole("heading", { name: "To do now 1" }).closest("section");
-    expect(within(now).getByRole("heading", { name: /Potager/ })).toBeInTheDocument();
+    expect(within(now).getByRole("heading", { name: "🥕 Potager" })).toBeInTheDocument();
     expect(within(now).getByText("Celosia")).toBeInTheDocument();
 
     const overdue = screen.getByRole("heading", { name: "Overdue 1" }).closest("section");
     expect(within(overdue).getByText("Tomato")).toBeInTheDocument();
     expect(within(overdue).getByText("7 days late")).toBeInTheDocument();
     expect(within(overdue).queryByText("Zinnia")).not.toBeInTheDocument();
+  });
+
+  it("marks every task in an area done from its header", async () => {
+    const user = userEvent.setup({ advanceTimers: () => {} });
+    renderToday();
+    const now = screen.getByRole("heading", { name: "To do now 1" }).closest("section");
+    await user.click(within(now).getByRole("button", { name: "Mark all 1 Potager tasks done" }));
+    expect(context.markTasksDone).toHaveBeenCalledWith([{ seedId: "c", taskType: "harvest" }]);
   });
 
   it("filters by task type from the sheet, including plants with no zone", async () => {

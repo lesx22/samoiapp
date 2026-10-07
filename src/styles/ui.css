@@ -566,6 +566,7 @@
   background: var(--color-surface);
   border-bottom: var(--line) solid var(--line-color);
 }
+.ui-group-header__title { margin: 0; font: inherit; }
 .ui-group-footer {
   padding: var(--space-1) var(--card-pad);
   border-top: var(--line) solid var(--line-color);

@@ -36,6 +36,8 @@ export default function TodayPage() {
   const zoneLabel = id => id === NO_ZONE ? "No zone" : zones.find(z => z.id === id)?.name ?? id;
   const chipLabel = (key, value) => key === "zone" ? zoneLabel(value) : TYPE_LABEL[value];
 
+  const markAll = list => markTasksDone(list.map(({ seed, task }) => ({ seedId: seed.id, taskType: task.type })));
+
   const row = ({ seed, task }, isDone = false) => (
     <li key={`${seed.id}-${task.type}`}>
       <TaskRow seed={seed} task={task} done={isDone} onToggle={() => toggleTask(seed.id, task.type)} />
@@ -84,7 +86,7 @@ export default function TodayPage() {
         {current.length > 0 && (
           <TaskSection title="To do now" count={current.length}>
             {groupByZone(current, zones).map(g => (
-              <ZoneGroup key={g.zone?.id ?? "none"} zone={g.zone} items={g.items} renderRow={row} />
+              <ZoneGroup key={g.zone?.id ?? "none"} zone={g.zone} items={g.items} renderRow={row} onMarkAllDone={() => markAll(g.items)} />
             ))}
           </TaskSection>
         )}
@@ -93,7 +95,7 @@ export default function TodayPage() {
           <TaskSection title="Overdue" count={overdue.length} tone="error"
             note={`Windows that ended in the last ${PROBABLY_DONE_AFTER_DAYS} days.`}>
             {groupByZone(overdue, zones).map(g => (
-              <ZoneGroup key={g.zone?.id ?? "none"} zone={g.zone} items={g.items} renderRow={row} />
+              <ZoneGroup key={g.zone?.id ?? "none"} zone={g.zone} items={g.items} renderRow={row} onMarkAllDone={() => markAll(g.items)} />
             ))}
           </TaskSection>
         )}
@@ -106,7 +108,7 @@ export default function TodayPage() {
                 key={g.zone?.id ?? "none"}
                 zone={g.zone}
                 items={g.items}
-                onMarkAllDone={() => markTasksDone(g.items.map(({ seed, task }) => ({ seedId: seed.id, taskType: task.type })))}
+                onMarkAllDone={() => markAll(g.items)}
                 renderRow={row}
               />
             ))}
@@ -187,16 +189,22 @@ function TaskSection({ title, count, tone, note, children }) {
 }
 
 // One area's tasks in a card. Long areas show the first few, then "Show more".
-function ZoneGroup({ zone, items, renderRow }) {
+function ZoneGroup({ zone, items, renderRow, onMarkAllDone }) {
   const [expanded, setExpanded] = useState(false);
   const visible = expanded ? items : items.slice(0, GROUP_PREVIEW);
   const hidden = items.length - visible.length;
   return (
     <Card variant="flush">
-      <h3 className="ui-group-header">
-        <span>{zoneName(zone)}</span>
-        <span className="ui-count">{items.length}</span>
-      </h3>
+      <div className="ui-group-header">
+        <h3 className="ui-group-header__title">{zoneName(zone)}</h3>
+        <span className="ui-row" style={{ flexWrap: "nowrap" }}>
+          <span className="ui-count">{items.length}</span>
+          <Button variant="secondary" size="sm" onClick={onMarkAllDone}
+            aria-label={`Mark all ${items.length} ${zone ? zone.name : "No zone"} tasks done`}>
+            Mark all done
+          </Button>
+        </span>
+      </div>
       <ul className="ui-list">{visible.map(item => renderRow(item))}</ul>
       {hidden > 0 && (
         <div className="ui-group-footer">
