@@ -64,7 +64,11 @@ function claudeApiPlugin() {
           ? await POST(request)
           : new Response('Method not allowed', { status: 405 });
         res.writeHead(response.status, Object.fromEntries(response.headers));
-        res.end(Buffer.from(await response.arrayBuffer()));
+        // Forward each chunk as it arrives so streamed answers stream locally too
+        if (response.body) {
+          for await (const chunk of response.body) res.write(chunk);
+        }
+        res.end();
       });
     },
   };
