@@ -9,7 +9,6 @@ const NAV_ITEMS = [
   { to: "/today",    label: "Today",    icon: "◎" },
   { to: "/garden",   label: "Garden",   icon: "⬡" },
   { to: "/calendar", label: "Calendar", icon: "▦" },
-  { to: "/zone",     label: "Zone",     icon: "◈" },
 ];
 
 export default function Nav({ session }) {

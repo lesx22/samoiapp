@@ -8,6 +8,27 @@ export const LOC = {
   plot: "1/8 acre · ~500 m²",
 };
 
+// Shown on Home: the first three always, the rest behind "More"
+export const GARDEN_FACTS = [
+  { key: "zone",       label: "Growing zone" },
+  { key: "lastFrost",  label: "Last frost" },
+  { key: "firstFrost", label: "First frost" },
+  { key: "name",       label: "Location" },
+  { key: "climate",    label: "Climate" },
+  { key: "season",     label: "Frost-free season" },
+  { key: "plot",       label: "Plot size" },
+];
+export const KEY_FACT_COUNT = 3;
+
+export const NORMANDY_NOTES = [
+  "Oceanic climate — mild and wet. Brassicas, roots, and salads thrive year-round.",
+  "Warm-season crops (melons, squash, peppers) need black plastic mulch and row cover.",
+  "Choose early-maturing varieties for heat-lovers — summers are cooler than southern France.",
+  "Main threats: slugs, blight, downy mildew. Mulch well, water at soil level only.",
+  "Start tender crops under glass or LED grow lights from early March for best results.",
+  "Around 200 frost-free days — a very long season for cool-weather crops.",
+];
+
 export const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export const TODAY_M = new Date().getMonth() + 1;

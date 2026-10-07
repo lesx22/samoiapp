@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SeedsProvider, useSeedsContext } from "./context/SeedsContext";
 import { supabase } from "./lib/supabase";
 import Nav from "./components/Nav";
@@ -13,7 +13,6 @@ const SeedsPage      = lazy(() => import("./pages/SeedsPage"));
 const SeedDetailPage = lazy(() => import("./pages/SeedDetailPage"));
 const TodayPage      = lazy(() => import("./pages/TodayPage"));
 const CalendarPage   = lazy(() => import("./pages/CalendarPage"));
-const ZonePage       = lazy(() => import("./pages/ZonePage"));
 const GardenPage     = lazy(() => import("./pages/GardenPage"));
 const ZoneDetailPage = lazy(() => import("./pages/ZoneDetailPage"));
 
@@ -53,7 +52,8 @@ function AppShell({ session }) {
           <Route path="/garden"      element={<GardenPage />} />
           <Route path="/garden/:zoneId" element={<ZoneDetailPage />} />
           <Route path="/calendar"    element={<CalendarPage />} />
-          <Route path="/zone"        element={<ZonePage />} />
+          {/* The Zone page moved into Home; old links still land somewhere useful */}
+          <Route path="/zone"        element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
       </main>
