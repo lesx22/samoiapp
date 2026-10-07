@@ -38,25 +38,14 @@ Built for gardeners of all scales — from amateur home growers to professional 
 
 ## Running locally
 
-1. Clone the repo
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Create a `.env` file in the project root:
-   ```
-   VITE_ANTHROPIC_API_KEY=your_api_key_here
-   ```
-4. Start the dev server:
-   ```
-   npm run dev
-   ```
-5. Open `http://localhost:5173`
+1. Clone the repo and run `npm install`
+2. Create `.env.local` in the project root with `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` and `ANTHROPIC_API_KEY` (server-only; never prefix it with `VITE_`)
+3. Run `npm run dev -- --port 5180 --strictPort` and open http://localhost:5180
 
-> Note: the `.env` file is gitignored and never committed. Never share your API key.
+`npm test` runs the tests. See `CLAUDE.md` for structure and conventions.
 
 ---
 
 ## Status
 
-Active development. Data persistence (Supabase) and multi-user auth coming next.
+Active development. Data lives in Supabase; sign-in is invite-only.
