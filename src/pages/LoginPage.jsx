@@ -33,7 +33,8 @@ export default function LoginPage() {
     } else {
       const { error } = await supabase.auth.signInWithOtp({
         email: email.trim().toLowerCase(),
-        options: { emailRedirectTo: window.location.origin },
+        // Sign-ups are closed: only existing accounts get a link
+        options: { emailRedirectTo: window.location.origin, shouldCreateUser: false },
       });
       setLoading(false);
       if (error) { setError(error.message); return; }
