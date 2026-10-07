@@ -6,7 +6,28 @@ export const NO_ZONE = "none";
 const MONTH_KEYS = { sow: "sowMonths", transplant: "transplantMonths", harvest: "harvestMonths" };
 const TYPES = Object.keys(MONTH_KEYS);
 
-export const monthsFor = (seed, type) => seed[MONTH_KEYS[type]] || [];
+export const monthsFor = (seed, type) =>
+  type === "growing" ? growingMonths(seed) : seed[MONTH_KEYS[type]] || [];
+
+// Months the plant is in the ground growing: the gap between its last sowing or
+// transplant and the start of its harvest. Wraps over the new year (garlic sown
+// in October, harvested in June). Empty if the plant has no gap or no harvest.
+export function growingMonths(seed) {
+  const planted = new Set([...monthsFor(seed, "sow"), ...monthsFor(seed, "transplant")]);
+  const harvest = new Set(monthsFor(seed, "harvest"));
+  if (!planted.size || !harvest.size) return [];
+  const prev = m => (m === 1 ? 12 : m - 1);
+  const result = new Set();
+  // Each harvest window starts at a harvest month whose previous month isn't harvest
+  for (const h of harvest) {
+    if (harvest.has(prev(h))) continue;
+    const gap = [];
+    let m = prev(h);
+    for (let i = 0; i < 11 && !planted.has(m) && !harvest.has(m); i++, m = prev(m)) gap.push(m);
+    if (planted.has(m)) gap.forEach(g => result.add(g));
+  }
+  return [...result].sort((a, b) => a - b);
+}
 
 // [3, 4, 9] → "Mar to Apr, Sep"
 export function monthRanges(months) {
@@ -22,7 +43,7 @@ export function monthRanges(months) {
 
 // A sentence a screen reader can read in place of the coloured bars
 export function seasonSummary(seed) {
-  const parts = TYPES.filter(t => monthsFor(seed, t).length)
+  const parts = ["sow", "transplant", "growing", "harvest"].filter(t => monthsFor(seed, t).length)
     .map(t => `${t[0].toUpperCase()}${t.slice(1)} ${monthRanges(monthsFor(seed, t))}`);
   return parts.length ? parts.join("; ") : "No months set";
 }

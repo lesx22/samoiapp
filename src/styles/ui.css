@@ -650,14 +650,18 @@
 /* ─── Season calendar ──────────────────────────────────────────────────────── */
 
 :root {
-  --cal-sow: #3f8a63;
-  --cal-transplant: #5b7fb5;
-  --cal-harvest: #d29a3c;
+  /* Season order, light to ripe: yellow sow, green transplant, pale green growing, terracotta harvest */
+  --cal-sow: #f2cc5b;
+  --cal-sow-text: #5c4300;
+  --cal-transplant: #3f8f5a;
+  --cal-growing: #d6ebdc;
+  --cal-growing-text: #2f6b43;
+  --cal-harvest: #c8553d;
   --cal-name: 120px;
-  --cal-bar: 14px;
+  --cal-bar: 16px;
 }
 @media (min-width: 768px) {
-  :root { --cal-name: 240px; --cal-bar: 18px; }
+  :root { --cal-name: 240px; --cal-bar: 20px; }
 }
 
 .ui-cal-row {
@@ -702,10 +706,24 @@
   overflow: hidden;
   background: var(--color-surface);
 }
-.ui-cal-cell > span { flex: 1; }
+.ui-cal-cell > span {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+}
+@media (min-width: 768px) {
+  .ui-cal-cell > span { font-size: 11px; }
+}
 .ui-cal-cell--now { box-shadow: 0 0 0 1.5px var(--color-green); }
-.ui-cal--sow { background: var(--cal-sow); }
+.ui-cal--sow { background: var(--cal-sow); color: var(--cal-sow-text) !important; }
 .ui-cal--transplant { background: var(--cal-transplant); }
+.ui-cal--growing { background: var(--cal-growing); color: var(--cal-growing-text) !important; }
 .ui-cal--harvest { background: var(--cal-harvest); }
 
 .ui-cal-legend {
@@ -719,8 +737,18 @@
   color: var(--color-text-subtle);
 }
 .ui-cal-legend li { display: inline-flex; align-items: center; gap: var(--space-2); }
-.ui-cal-swatch { width: 12px; height: 12px; border-radius: 3px; }
-.ui-cal-swatch--now { box-shadow: inset 0 0 0 1.5px var(--color-green); }
+.ui-cal-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+.ui-cal-swatch--now { width: 14px; height: 14px; box-shadow: inset 0 0 0 1.5px var(--color-green); }
 
 /* Read by screen readers, not shown */
 .ui-visually-hidden {

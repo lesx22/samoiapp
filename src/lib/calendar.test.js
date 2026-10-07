@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { monthRanges, seasonSummary, filterCalendar, groupCalendar, EMPTY_CAL_FILTERS, NO_ZONE } from "./calendar";
+import { growingMonths, monthRanges, seasonSummary, filterCalendar, groupCalendar, EMPTY_CAL_FILTERS, NO_ZONE } from "./calendar";
 
 const seeds = [
   { id: "1", name: "Zinnia", category: "Annual Flower", zoneId: "potager", sowMonths: [3, 4], harvestMonths: [7, 8, 9] },
@@ -13,8 +13,22 @@ describe("month text", () => {
     expect(monthRanges([9, 3, 4])).toBe("Mar to Apr, Sep");
   });
   it("summarises a plant's season for screen readers", () => {
-    expect(seasonSummary(seeds[1])).toBe("Sow Feb to Mar; Transplant May; Harvest Aug to Sep");
+    expect(seasonSummary(seeds[1])).toBe("Sow Feb to Mar; Transplant May; Growing Jun to Jul; Harvest Aug to Sep");
     expect(seasonSummary({})).toBe("No months set");
+  });
+});
+
+describe("growingMonths", () => {
+  it("fills the gap between transplant and harvest", () => {
+    expect(growingMonths(seeds[1])).toEqual([6, 7]);
+  });
+  it("wraps over the new year", () => {
+    expect(growingMonths({ sowMonths: [10, 11], harvestMonths: [6, 7] })).toEqual([1, 2, 3, 4, 5, 12]);
+  });
+  it("is empty with no gap, no harvest or no planting", () => {
+    expect(growingMonths({ sowMonths: [3], transplantMonths: [4], harvestMonths: [5] })).toEqual([]);
+    expect(growingMonths({ sowMonths: [10, 11] })).toEqual([]);
+    expect(growingMonths({ harvestMonths: [6] })).toEqual([]);
   });
 });
 

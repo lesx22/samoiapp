@@ -11,6 +11,13 @@ const TYPES = [
   { value: "transplant", label: "Transplant" },
   { value: "harvest", label: "Harvest" },
 ];
+// Bars on the calendar, in season order. Growing isn't a task, so it isn't a filter.
+const PHASES = [
+  { value: "sow", label: "Sow", letter: "S" },
+  { value: "transplant", label: "Transplant", letter: "T" },
+  { value: "growing", label: "Growing", letter: "G" },
+  { value: "harvest", label: "Harvest", letter: "H" },
+];
 const TYPE_LABEL = Object.fromEntries(TYPES.map(t => [t.value, t.label]));
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -129,7 +136,9 @@ export default function CalendarPage() {
 function Legend() {
   return (
     <ul className="ui-cal-legend" aria-label="Key">
-      {TYPES.map(t => <li key={t.value}><span className={`ui-cal-swatch ui-cal--${t.value}`} />{t.label}</li>)}
+      {PHASES.map(p => (
+        <li key={p.value}><span className={`ui-cal-swatch ui-cal--${p.value}`} aria-hidden="true">{p.letter}</span>{p.label}</li>
+      ))}
       <li><span className="ui-cal-swatch ui-cal-swatch--now" />This month</li>
     </ul>
   );
@@ -169,10 +178,11 @@ function CalendarRow({ seed }) {
       <span className="ui-visually-hidden">{seasonSummary(seed)}</span>
       {MONTHS.map((_, i) => {
         const m = i + 1;
-        const active = TYPES.filter(t => monthsFor(seed, t.value).includes(m));
+        const active = PHASES.filter(p => monthsFor(seed, p.value).includes(m));
         return (
           <span key={m} className={`ui-cal-cell${m === TODAY_M ? " ui-cal-cell--now" : ""}`} aria-hidden="true">
-            {active.map(t => <span key={t.value} className={`ui-cal--${t.value}`} />)}
+            {/* A split month is too small for letters, so only single bars get one */}
+            {active.map(p => <span key={p.value} className={`ui-cal--${p.value}`}>{active.length === 1 ? p.letter : ""}</span>)}
           </span>
         );
       })}

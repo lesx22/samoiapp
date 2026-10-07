@@ -1,7 +1,7 @@
 # Changelog
 
 ## 2026-10-07 (Calendar on the UI kit)
-- **feat:** Calendar rebuilt on the UI kit: full plant names with variety, grouped by category (or zone, or A to Z) in collapsible groups, search and a filter sheet (task, month, zone, category, for example "sow in March"), month headings that stay in view, thin bars that fit all 12 months on a phone, and a text summary of each season for screen readers.
+- **feat:** Calendar rebuilt on the UI kit: full plant names with variety, grouped by category (or zone, or A to Z) in collapsible groups, search and a filter sheet (task, month, zone, category, for example "sow in March"), month headings that stay in view, bars that fit all 12 months on a phone with S, T, G and H letters, colours in season order (yellow sow, green transplant, pale green growing, terracotta harvest), a "Growing" bar filling the months between planting and harvest, and a text summary of each season for screen readers.
 
 ## 2026-10-07 (Today page on the UI kit)
 - **feat:** Today rebuilt on the UI kit: search and a filter sheet (task type, zone, including "No zone"), each area in its own card with "Mark all done" in its header, showing 5 tasks then "Show more", "days late" on overdue tasks, thinner round tick boxes, shorter tick-then-remove animation. Home's Today card uses the same task row.

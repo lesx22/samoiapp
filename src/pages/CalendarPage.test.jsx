@@ -23,7 +23,7 @@ describe("Calendar", () => {
     renderPage();
     expect(screen.getByRole("button", { name: /Annual Flower 1/ })).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("button", { name: /Vegetable 2/ })).toBeInTheDocument();
-    expect(screen.getByText("Sow Feb to Mar; Transplant May; Harvest Aug to Sep")).toBeInTheDocument();
+    expect(screen.getByText("Sow Feb to Mar; Transplant May; Growing Jun to Jul; Harvest Aug to Sep")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Zinnia/ })).toHaveAttribute("href", "/seeds/1");
   });
 
