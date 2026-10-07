@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-07 (Plants page on the UI kit)
+- **feat:** Plants page rebuilt on the shared UI kit: one-line toolbar (search, Filter, sort, list or grid), filters in a sheet that apply on "Show N plants", removable filter chips, pages of 40 with "Show more", zone and category columns on desktop, Add plants fixed to the bottom on phones, toolbar hides on scroll down on phones.
+- **fix:** the zone filter showed internal ids (for example `potager-…`) instead of zone names.
+
 ## 2026-10-07 (design rebuild, first pass)
 - **feat:** shared UI kit in `src/ui/` and `src/styles/ui.css`: one scale for spacing, corners, lines and text; primary, secondary, ghost and danger buttons; inputs, tags, filter chips, cards, list toolbar; phone sizes roomier, desktop denser. Preview at `/design`. No existing page changes yet.
 
