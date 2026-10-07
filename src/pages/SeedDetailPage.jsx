@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
 import { badge, taskGuidance, MONTHS, TODAY_M } from "../data/garden";
-import { chatAboutPlant } from "../lib/claude";
 import UploadModal from "../components/UploadModal";
 import { friendlyFetchError } from "../lib/errors";
+
+// Chat (and its Markdown renderer) loads only when the Chat tab is opened
+const PlantChat = lazy(() => import("../components/PlantChat"));
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -203,7 +205,7 @@ export default function SeedDetailPage() {
       {activeTab === 1 && <PlantTasksTab seedId={id} seed={seed} getPlantTasks={getPlantTasks} addPlantTask={addPlantTask} togglePlantTask={togglePlantTask} deletePlantTask={deletePlantTask} />}
       {activeTab === 2 && <TodayTab seed={seed} />}
       {activeTab === 3 && <DiaryTab seedId={id} addDiaryEntry={addDiaryEntry} getDiaryEntries={getDiaryEntries} />}
-      {activeTab === 4 && <ChatTab seed={seed} />}
+      {activeTab === 4 && <Suspense fallback={null}><PlantChat seed={seed} /></Suspense>}
 
       {editModalOpen && (
         <EditPlantModal
@@ -536,117 +538,6 @@ function DiaryTab({ seedId, addDiaryEntry, getDiaryEntries }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// ─── Chat Tab ─────────────────────────────────────────────────────────────────
-
-function ChatTab({ seed }) {
-  const storageKey = `jardin-chat-${seed.id}`;
-  const [messages, setMessages] = useState(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const bottomRef = useRef();
-
-  const isFirstVisit = messages.length === 0;
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  useEffect(() => {
-    try { localStorage.setItem(storageKey, JSON.stringify(messages)); }
-    catch { /* storage full */ }
-  }, [messages, storageKey]);
-
-  async function send() {
-    const text = input.trim();
-    if (!text || loading) return;
-    setInput("");
-
-    const newMessages = [...messages, { role: "user", content: text }];
-    setMessages(newMessages);
-    setLoading(true);
-
-    try {
-      const reply = await chatAboutPlant(seed.name, newMessages.map(m => ({
-        role: m.role,
-        content: m.content,
-      })));
-      setMessages(prev => [...prev, { role: "assistant", content: reply }]);
-    } catch (err) {
-      setMessages(prev => [...prev, { role: "assistant", content: `Sorry, I couldn't reach the AI. (${err.message})` }]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div>
-      {/* Opening message */}
-      {isFirstVisit && (
-        <div className="card" style={{ marginBottom: "var(--space-lg)", background: "var(--color-green-pale)", borderColor: "var(--color-green)" }}>
-          <p style={{ fontSize: "var(--text-body)", lineHeight: 1.7, margin: 0, color: "var(--color-green)" }}>
-            Hi, I'm your assistant for {seed.name}{seed.variety && seed.variety !== "Standard" ? ` '${seed.variety}'` : ""}. Ask me anything about growing this plant in your garden.
-          </p>
-        </div>
-      )}
-
-      {/* Message history */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-md)", marginBottom: "var(--space-lg)", minHeight: 100 }}>
-        {messages.map((msg, i) => (
-          <div key={i} style={{
-            display: "flex",
-            justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-          }}>
-            <div style={{
-              maxWidth: "85%",
-              padding: "var(--space-md) var(--space-lg)",
-              borderRadius: msg.role === "user" ? "var(--radius-md) var(--radius-md) var(--space-xs) var(--radius-md)" : "var(--radius-md) var(--radius-md) var(--radius-md) var(--space-xs)",
-              background: msg.role === "user" ? "var(--color-green)" : "var(--color-border)",
-              color: msg.role === "user" ? "#fff" : "var(--color-text)",
-              fontSize: "var(--text-body)",
-              lineHeight: 1.6,
-            }}>
-              {msg.content}
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{ padding: "var(--space-md) var(--space-lg)", background: "var(--color-border)", borderRadius: "var(--radius-md)", fontSize: "var(--text-body)", color: "var(--color-text-muted)" }}>
-              <span className="animate-pulse">Thinking...</span>
-            </div>
-          </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input */}
-      <div style={{ display: "flex", gap: "var(--space-sm)", position: "sticky", bottom: "calc(var(--bottom-nav-height) + var(--space-md))" }}>
-        <input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
-          placeholder={`Ask about your ${seed.name}...`}
-          style={{ flex: 1 }}
-          disabled={loading}
-        />
-        <button
-          className="btn-primary"
-          onClick={send}
-          disabled={!input.trim() || loading}
-          style={{ flexShrink: 0, fontSize: "var(--text-small)", padding: "var(--space-sm) var(--space-lg)" }}
-        >
-          Send
-        </button>
-      </div>
     </div>
   );
 }
