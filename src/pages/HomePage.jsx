@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
-import { LOC, GARDEN_FACTS, KEY_FACT_COUNT, NORMANDY_NOTES, getActiveTasks } from "../data/garden";
+import { LOC, GARDEN_FACTS, KEY_FACT_COUNT, NORMANDY_NOTES, getActiveTasks, PROBABLY_DONE_AFTER_DAYS } from "../data/garden";
 import { TaskRow } from "./TodayPage";
 
 export default function HomePage({ onUpload }) {
@@ -10,12 +10,14 @@ export default function HomePage({ onUpload }) {
   const [showAllFacts, setShowAllFacts] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
 
-  // Flat list of pending tasks for the widget (max 3 shown)
+  // Pending tasks for the widget (max 3 shown): due now first, then recently
+  // overdue. Old overdue tasks are left out, as on Today and in the nav badge.
   const allPending = seeds.flatMap(seed =>
     getActiveTasks(seed)
       .filter(task => !isTaskDone(seed.id, task.type))
+      .filter(task => task.status === "current" || task.daysOverdue <= PROBABLY_DONE_AFTER_DAYS)
       .map(task => ({ seed, task }))
-  );
+  ).sort((a, b) => (a.task.status === "current" ? 0 : 1) - (b.task.status === "current" ? 0 : 1));
   const todayPreview = allPending.slice(0, 3);
   const facts = showAllFacts ? GARDEN_FACTS : GARDEN_FACTS.slice(0, KEY_FACT_COUNT);
 
@@ -61,18 +63,14 @@ export default function HomePage({ onUpload }) {
           </p>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
+        {/* Task rows come from the UI kit; the negative margin lines them up with the card edge */}
+        <ul className="ui-list" style={{ margin: "0 calc(-1 * var(--space-lg))" }}>
           {todayPreview.map(({ seed, task }) => (
-            <TaskRow
-              key={`${seed.id}-${task.type}`}
-              seed={seed}
-              task={task}
-              done={false}
-              onToggle={() => toggleTask(seed.id, task.type)}
-              onNavigate={() => navigate(`/seeds/${seed.id}`)}
-            />
+            <li key={`${seed.id}-${task.type}`}>
+              <TaskRow seed={seed} task={task} done={false} onToggle={() => toggleTask(seed.id, task.type)} />
+            </li>
           ))}
-        </div>
+        </ul>
 
         {allPending.length > 3 && (
           <p style={{

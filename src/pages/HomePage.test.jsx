@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
@@ -36,6 +36,21 @@ describe("Home (with the former Zone page folded in)", () => {
     expect(screen.queryByText(/Oceanic climate/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Normandy growing notes" }));
     expect(screen.getByText(/Oceanic climate/)).toBeInTheDocument();
+  });
+});
+
+describe("Home's Today card", () => {
+  afterEach(() => { context.seeds = []; vi.useRealTimers(); });
+
+  it("shows tasks due now first and leaves out ones that are probably done", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 9, 7, 9, 0));
+    // Sowing ended in April (probably done); harvest is due now
+    context.seeds = [{ id: "c", name: "Celosia", sowMonths: [4], harvestMonths: [10] }];
+    renderHome();
+    expect(screen.getByRole("checkbox", { name: "Harvest Celosia" })).toBeInTheDocument();
+    expect(screen.queryByRole("checkbox", { name: "Sow Celosia" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/days late/)).not.toBeInTheDocument();
   });
 });
 
