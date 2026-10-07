@@ -22,7 +22,7 @@ export default function CalendarPage() {
       {seeds.length === 0 ? (
         <div style={{ textAlign: "center", padding: "var(--space-2xl) 0", color: "var(--color-text-muted)" }}>
           <div style={{ fontSize: "3rem", marginBottom: "var(--space-md)" }}>▦</div>
-          <p>Add seeds to see your planting calendar.</p>
+          <p>Add plants to see your planting calendar.</p>
         </div>
       ) : (
         <div className="card" style={{ overflowX: "auto", padding: "var(--space-lg) var(--space-md)" }}>
