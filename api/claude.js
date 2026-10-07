@@ -3,7 +3,12 @@
 // Only signed-in Supabase users can call it, and the model and tools are fixed
 // here so the endpoint can't be used for anything the app doesn't do.
 
-const MODEL = "claude-sonnet-4-6";
+// The browser says what the call is for; the server picks the model. Chat uses
+// the faster, cheaper model; adding plants keeps the stronger one for accuracy.
+const MODELS = {
+  plant: "claude-sonnet-4-6",
+  chat: "claude-haiku-4-5-20251001",
+};
 const MAX_TOKENS_LIMIT = 8000;
 
 function json(status, body) {
@@ -36,7 +41,11 @@ export async function POST(request) {
   } catch {
     return json(400, { error: "Invalid JSON body" });
   }
-  const { system, messages, maxTokens } = body;
+  const { system, messages, maxTokens, purpose = "plant" } = body;
+  const model = MODELS[purpose];
+  if (!model) {
+    return json(400, { error: "purpose must be plant or chat" });
+  }
   if (!Array.isArray(messages) || messages.length === 0) {
     return json(400, { error: "messages must be a non-empty array" });
   }
@@ -49,7 +58,7 @@ export async function POST(request) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: MODEL,
+      model,
       max_tokens: Math.min(Number(maxTokens) || MAX_TOKENS_LIMIT, MAX_TOKENS_LIMIT),
       system,
       messages,
