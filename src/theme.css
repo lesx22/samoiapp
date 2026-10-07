@@ -6,6 +6,7 @@
   --color-text:         #111111;
   --color-text-muted:   #555555;
   --color-border:       #e0e0e0;
+  --color-surface:      #f3f4f1;
   --color-green:        #2d6a4f;
   --color-green-light:  #52b788;
   --color-green-pale:   #d8f3dc;
@@ -349,6 +350,115 @@ label {
 
 @media (prefers-reduced-motion: reduce) {
   .disclosure::after { transition: none; }
+}
+
+/* ─── Plant chat ────────────────────────────────────────────────────────────── */
+
+.chat { display: flex; flex-direction: column; }
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding-bottom: var(--space-lg);
+}
+
+.chat-row { display: flex; flex-direction: column; gap: var(--space-xs); }
+.chat-row--user      { align-items: flex-end; }
+.chat-row--assistant { align-items: flex-start; }
+
+.chat-bubble {
+  max-width: 85%;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  font-size: var(--text-body);
+  line-height: 1.6;
+}
+.chat-bubble p { margin: 0; }
+.chat-bubble--user {
+  background: var(--color-green);
+  color: #fff;
+  border-bottom-right-radius: var(--space-xs);
+}
+.chat-bubble--assistant {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-bottom-left-radius: var(--space-xs);
+}
+.chat-bubble--failed { color: var(--color-error); }
+
+/* Markdown inside answers */
+.chat-md :where(p, ul, ol) { margin: 0; }
+.chat-md > * + * { margin-top: 0.75rem; } /* after the reset, so it wins */
+.chat-md > p + ul, .chat-md > p + ol { margin-top: 0.25rem; } /* a label sits with its list */
+.chat-md > :first-child { margin-top: 0; }
+.chat-md ul, .chat-md ol { padding-left: 1.25em; }
+.chat-md li + li { margin-top: 2px; }
+.chat-md h1, .chat-md h2, .chat-md h3, .chat-md h4 {
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: 700;
+  margin: var(--space-md) 0 0;
+}
+.chat-md a { color: var(--color-green); text-decoration: underline; }
+.chat-md code { font-size: 0.9em; background: var(--color-bg); padding: 0 4px; border-radius: 4px; }
+
+.chat-sources {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  max-width: 85%;
+  font-size: var(--text-small);
+}
+.chat-sources__label { color: var(--color-text-muted); margin-right: var(--space-xs); }
+.chat-source {
+  color: var(--color-green);
+  border: 1px solid var(--color-border);
+  border-radius: 100px;
+  padding: 0 var(--space-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.chat-source:hover { border-color: var(--color-green); }
+
+.chat-thinking { display: flex; align-items: center; gap: var(--space-sm); color: var(--color-text-muted); }
+.typing-dots { display: inline-flex; gap: 4px; }
+.typing-dots span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--color-text-muted);
+  animation: typingDot 1.2s ease-in-out infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typingDot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30%           { transform: translateY(-4px); opacity: 1; }
+}
+
+/* Composer stays at the bottom of the screen, above the phone tab bar, on a
+   solid background so messages never show through it. */
+.chat-composer {
+  position: sticky;
+  bottom: var(--bottom-nav-height);
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-md) 0;
+  background: var(--color-bg);
+  border-top: 1.5px solid var(--color-border);
+}
+.chat-composer input { flex: 1; min-width: 0; }
+
+/* Auto-scroll stops above the composer (and the phone tab bar), never under it */
+.chat-end { scroll-margin-bottom: calc(var(--bottom-nav-height) + 100px); }
+.chat-composer button { flex-shrink: 0; }
+@media (min-width: 768px) {
+  .chat-composer { bottom: 0; padding-bottom: var(--space-lg); }
+  .chat-end { scroll-margin-bottom: 110px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-dots span { animation: none; opacity: 0.7; }
 }
 
 /* ─── Scrollbar ─────────────────────────────────────────────────────────────── */

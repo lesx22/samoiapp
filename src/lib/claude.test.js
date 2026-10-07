@@ -19,7 +19,7 @@ describe("callClaude", () => {
     expect(url).toBe("/api/claude");
     expect(init.headers.Authorization).toBe("Bearer user-token");
     expect(init.headers["x-api-key"]).toBeUndefined();
-    expect(JSON.parse(init.body)).toEqual({ system: "sys", messages: [{ role: "user", content: "hi" }], maxTokens: 500 });
+    expect(JSON.parse(init.body)).toEqual({ system: "sys", messages: [{ role: "user", content: "hi" }], maxTokens: 500, purpose: "plant" });
   });
 
   it("surfaces proxy errors", async () => {
@@ -55,3 +55,18 @@ describe("prompts use the real current date", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).system).toContain("Today is 7 October 2026.");
   });
 });
+
+describe("chatAboutPlant", () => {
+  it("asks the server for the chat model and streams the answer", async () => {
+    const { chatAboutPlant } = await import("./claude");
+    const sse = 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Water weekly."}}\n\n';
+    const fetchMock = vi.fn(async () => new Response(sse, { headers: { "Content-Type": "text/event-stream" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const reply = await chatAboutPlant("Celosia", [{ role: "user", content: "How often?" }]);
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.purpose).toBe("chat");
+    expect(sent.stream).toBe(true);
+    expect(reply.text).toBe("Water weekly.");
+  });
+});
+
