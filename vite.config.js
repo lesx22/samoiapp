@@ -80,6 +80,12 @@ export default defineConfig(({ mode }) => {
     test: {
       environment: 'jsdom',
       setupFiles: './src/test/setup.js',
+      // Placeholders so modules that create the Supabase client can load.
+      // CI has no .env.local, and tests must never reach the real project.
+      env: {
+        VITE_SUPABASE_URL: 'http://localhost:54321',
+        VITE_SUPABASE_ANON_KEY: 'test-anon-key',
+      },
     },
   }
 })

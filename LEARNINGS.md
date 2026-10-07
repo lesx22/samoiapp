@@ -31,3 +31,8 @@ Reusable rules from bugs and surprises. Check this before making changes.
 - **What went wrong:** pages called `loadPlantTasks` etc. in effects but left them out of the dependency list, because the functions were recreated every render; adding them would have looped forever. They also fetched twice when called twice quickly.
 - **Fix:** loaders are `useCallback` with no dependencies and track what's loaded in a `useRef` Set.
 - **Rule:** any function a context hands to pages for use in effects is wrapped in `useCallback` and never reads state directly; use refs or functional `setState`.
+
+## 2026-10-07: Tests passed locally but failed in CI because of .env.local
+- **What went wrong:** two plant page tests imported a module that creates the Supabase client at load time. Locally `.env.local` supplied the URL; GitHub Actions has no `.env.local`, so the import threw "supabaseUrl is required" and CI failed on main after PRs #12 to #14 merged.
+- **Fix:** `vite.config.js` gives tests placeholder `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` values.
+- **Rule:** before handing over a PR, check its CI result (`gh pr checks <n>`), not just local tests. To reproduce CI locally, run the tests in a clean `git worktree` that has no `.env.local`.
