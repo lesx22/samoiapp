@@ -33,7 +33,7 @@ export default function TodayPage() {
       {seeds.length === 0 && (
         <div style={{ textAlign: "center", padding: "var(--space-2xl) 0", color: "var(--color-text-muted)" }}>
           <div style={{ fontSize: "3rem", marginBottom: "var(--space-md)" }}>📋</div>
-          <p>Add seeds to see your daily tasks.</p>
+          <p>Add plants to see your daily tasks.</p>
         </div>
       )}
 

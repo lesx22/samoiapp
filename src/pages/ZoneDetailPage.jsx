@@ -4,7 +4,7 @@ import { useSeedsContext } from "../context/SeedsContext";
 import { getActiveTasks, MONTHS, TODAY_M } from "../data/garden";
 import { TaskRow } from "./TodayPage";
 
-const ZONE_TABS = ["Seeds", "Today", "Tasks", "Diary", "Calendar"];
+const ZONE_TABS = ["Plants", "Today", "Tasks", "Diary", "Calendar"];
 
 export default function ZoneDetailPage() {
   const { zoneId } = useParams();
@@ -105,7 +105,7 @@ function SeedsTab({ seeds, zone, navigate }) {
         <div style={{ fontSize: "3rem", marginBottom: "var(--space-md)" }}>{zone.emoji}</div>
         <p>No plants assigned to {zone.name} yet.</p>
         <p style={{ fontSize: "var(--text-small)", marginTop: "var(--space-sm)" }}>
-          Assign seeds from the Seeds page or when uploading.
+          Assign plants from the Plants page or when adding them.
         </p>
       </div>
     );

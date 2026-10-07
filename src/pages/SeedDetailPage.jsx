@@ -30,9 +30,9 @@ export default function SeedDetailPage() {
   if (!seed) {
     return (
       <div className="page" style={{ textAlign: "center", padding: "var(--space-2xl) 0" }}>
-        <p style={{ color: "var(--color-text-muted)" }}>Seed not found.</p>
+        <p style={{ color: "var(--color-text-muted)" }}>Plant not found.</p>
         <button className="btn-secondary" onClick={() => navigate("/seeds")} style={{ marginTop: "var(--space-md)" }}>
-          Back to Seeds
+          Back to Plants
         </button>
       </div>
     );
@@ -42,7 +42,7 @@ export default function SeedDetailPage() {
     return (
       <div className="page">
         <button className="btn-ghost" onClick={() => navigate("/seeds")} style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-md)", marginBottom: "var(--space-lg)" }}>
-          ← Seeds
+          ← Plants
         </button>
         <div style={{ display: "flex", gap: "var(--space-md)", alignItems: "flex-start", marginBottom: "var(--space-xl)" }}>
           <span style={{ fontSize: "3rem", lineHeight: 1 }}>🌱</span>
@@ -67,7 +67,7 @@ export default function SeedDetailPage() {
     return (
       <div className="page">
         <button className="btn-ghost" onClick={() => navigate("/seeds")} style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-md)", marginBottom: "var(--space-lg)" }}>
-          ← Seeds
+          ← Plants
         </button>
         <div style={{ display: "flex", gap: "var(--space-md)", alignItems: "flex-start", marginBottom: "var(--space-xl)" }}>
           <span style={{ fontSize: "3rem", lineHeight: 1 }}>⚠️</span>
@@ -78,7 +78,7 @@ export default function SeedDetailPage() {
         </div>
         <div style={{ display: "flex", gap: "var(--space-sm)" }}>
           <button className="btn-primary" onClick={() => setRefetchModalOpen(true)}>↻ Try again</button>
-          <button className="btn-secondary" onClick={() => navigate("/seeds")}>Back to Seeds</button>
+          <button className="btn-secondary" onClick={() => navigate("/seeds")}>Back to Plants</button>
         </div>
         {refetchModalOpen && (
           <UploadModal isOpen={refetchModalOpen} onClose={() => setRefetchModalOpen(false)} editSeedId={id} editSeedName={seed.name} />
@@ -94,7 +94,7 @@ export default function SeedDetailPage() {
       {/* Back + remove */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "var(--space-lg)" }}>
         <button className="btn-ghost" onClick={() => navigate("/seeds")} style={{ fontSize: "var(--text-small)", minHeight: "auto", padding: "var(--space-xs) var(--space-md)" }}>
-          ← Seeds
+          ← Plants
         </button>
         <div style={{ display: "flex", gap: "var(--space-sm)" }}>
           <button
