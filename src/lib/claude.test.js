@@ -65,3 +65,16 @@ describe("chatAboutPlant", () => {
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).purpose).toBe("chat");
   });
 });
+
+describe("sourcesOf", () => {
+  it("lists each cited page once", async () => {
+    const { sourcesOf } = await import("./claude");
+    const d = { content: [
+      { type: "server_tool_use" },
+      { type: "text", text: "a", citations: [{ url: "https://a.com/x", title: "A" }] },
+      { type: "text", text: "b", citations: [{ url: "https://a.com/x", title: "A" }, { url: "https://b.org", title: "B" }] },
+      { type: "text", text: "c" },
+    ] };
+    expect(sourcesOf(d)).toEqual([{ url: "https://a.com/x", title: "A" }, { url: "https://b.org", title: "B" }]);
+  });
+});

@@ -3,7 +3,36 @@ import { supabase } from "./supabase";
 // ─── Claude API ───────────────────────────────────────────────────────────────
 // Calls go through our /api/claude proxy, which holds the Anthropic key.
 
-export async function callClaude(system, messages, { maxTokens = 8000, purpose = "plant", _attempt = 0 } = {}) {
+export async function callClaude(system, messages, options = {}) {
+  const d = await requestClaude(system, messages, options);
+  const text = textOf(d);
+  if (!text) {
+    const types = d.content.map(b => b.type).join(", ");
+    throw new Error(`No text in API response. stop_reason=${d.stop_reason}, content types=[${types}]`);
+  }
+  return text;
+}
+
+function textOf(d) {
+  return d.content
+    .filter(b => b.type === "text")
+    .map(b => b.text)
+    .join("");
+}
+
+// Web search answers carry citations on their text blocks; keep one per page
+export function sourcesOf(d) {
+  const seen = new Map();
+  for (const block of d.content) {
+    for (const c of block.citations || []) {
+      if (c.url && !seen.has(c.url)) seen.set(c.url, { url: c.url, title: c.title || c.url });
+    }
+  }
+  return [...seen.values()];
+}
+
+// Calls the /api/claude proxy and returns Anthropic's full response
+async function requestClaude(system, messages, { maxTokens = 8000, purpose = "plant", _attempt = 0 } = {}) {
   const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch("/api/claude", {
     method: "POST",
@@ -22,7 +51,7 @@ export async function callClaude(system, messages, { maxTokens = 8000, purpose =
     }
     const retryAfter = parseInt(res.headers.get("retry-after") || "60", 10);
     await new Promise(r => setTimeout(r, retryAfter * 1000));
-    return callClaude(system, messages, { maxTokens, purpose, _attempt: _attempt + 1 });
+    return requestClaude(system, messages, { maxTokens, purpose, _attempt: _attempt + 1 });
   }
 
   if (!res.ok) {
@@ -32,18 +61,7 @@ export async function callClaude(system, messages, { maxTokens = 8000, purpose =
 
   const d = await res.json();
   if (d.error) throw new Error(`${d.error.type}: ${d.error.message}`);
-
-  const text = d.content
-    .filter(b => b.type === "text")
-    .map(b => b.text)
-    .join("");
-
-  if (!text) {
-    const types = d.content.map(b => b.type).join(", ");
-    throw new Error(`No text in API response. stop_reason=${d.stop_reason}, content types=[${types}]`);
-  }
-
-  return text;
+  return d;
 }
 
 export function normaliseMime(type, filename) {
@@ -322,8 +340,8 @@ export async function fromGoogleDoc(docText) {
 // ─── Conversational plant chat (no JSON schema) ────────────────────────────────
 
 export async function chatAboutPlant(plantName, messages) {
-  const system = `You are a friendly, knowledgeable gardening assistant specialising in the home garden at Condé-en-Normandy, France (Zone RHS H4 / USDA 8b, oceanic climate). The user is asking specifically about their ${plantName}. Give practical, clear advice. Keep responses concise — 2-4 sentences unless a longer answer is genuinely needed. Today is ${todayLabel()}.`;
+  const system = `You are a friendly, knowledgeable gardening assistant specialising in the home garden at Condé-en-Normandy, France (Zone RHS H4 / USDA 8b, oceanic climate). The user is asking specifically about their ${plantName}. Give practical, clear advice. Keep responses concise — 2-4 sentences unless a longer answer is genuinely needed. Use Markdown (short paragraphs, "- " bullet lists with each item on its own line, **bold** for key numbers) when it makes the answer easier to scan. Today is ${todayLabel()}.`;
 
-  const raw = await callClaude(system, messages, { purpose: "chat", maxTokens: 2000 });
-  return raw;
+  const d = await requestClaude(system, messages, { purpose: "chat", maxTokens: 2000 });
+  return { text: textOf(d), sources: sourcesOf(d) };
 }
