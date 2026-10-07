@@ -127,9 +127,10 @@ function BottomNav({ urgentCount }) {
           <span style={{ fontSize: "1.25rem", lineHeight: 1 }}>{icon}</span>
           <span style={{
             fontFamily: "var(--font-sans)",
-            fontSize: "var(--text-nav)",
+            fontSize: "0.75rem",
             fontWeight: 600,
             lineHeight: 1,
+            whiteSpace: "nowrap",
           }}>
             {label}
           </span>

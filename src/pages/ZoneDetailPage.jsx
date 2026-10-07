@@ -62,7 +62,7 @@ export default function ZoneDetailPage() {
         display: "flex",
         borderBottom: "1.5px solid var(--color-border)",
         marginBottom: "var(--space-xl)",
-      }}>
+      }} className="tab-row">
         {ZONE_TABS.map((tab, i) => (
           <button
             key={tab}
