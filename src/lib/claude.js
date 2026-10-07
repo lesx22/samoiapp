@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { readAnswerStream } from "./stream";
 
 // ─── Claude API ───────────────────────────────────────────────────────────────
 // Calls go through our /api/claude proxy, which holds the Anthropic key.
@@ -20,19 +21,16 @@ function textOf(d) {
     .join("");
 }
 
-// Web search answers carry citations on their text blocks; keep one per page
-export function sourcesOf(d) {
-  const seen = new Map();
-  for (const block of d.content) {
-    for (const c of block.citations || []) {
-      if (c.url && !seen.has(c.url)) seen.set(c.url, { url: c.url, title: c.title || c.url });
-    }
-  }
-  return [...seen.values()];
+// Calls the /api/claude proxy and returns Anthropic's full response
+async function requestClaude(system, messages, { maxTokens = 8000, purpose = "plant" } = {}) {
+  const res = await postToProxy({ system, messages, maxTokens, purpose });
+  const d = await res.json();
+  if (d.error) throw new Error(`${d.error.type}: ${d.error.message}`);
+  return d;
 }
 
-// Calls the /api/claude proxy and returns Anthropic's full response
-async function requestClaude(system, messages, { maxTokens = 8000, purpose = "plant", _attempt = 0 } = {}) {
+// POSTs to the proxy with the login token. Retries rate limits up to 3 times.
+async function postToProxy(body, attempt = 0) {
   const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch("/api/claude", {
     method: "POST",
@@ -40,28 +38,25 @@ async function requestClaude(system, messages, { maxTokens = 8000, purpose = "pl
       "Content-Type": "application/json",
       Authorization: `Bearer ${session?.access_token ?? ""}`,
     },
-    body: JSON.stringify({ system, messages, maxTokens, purpose }),
+    body: JSON.stringify(body),
   });
 
   // Rate limited — wait and retry up to 3 times
   if (res.status === 429) {
-    if (_attempt >= 3) {
+    if (attempt >= 3) {
       const txt = await res.text();
       throw new Error(`API 429 (rate limited after 3 retries): ${txt.slice(0, 200)}`);
     }
     const retryAfter = parseInt(res.headers.get("retry-after") || "60", 10);
     await new Promise(r => setTimeout(r, retryAfter * 1000));
-    return requestClaude(system, messages, { maxTokens, purpose, _attempt: _attempt + 1 });
+    return postToProxy(body, attempt + 1);
   }
 
   if (!res.ok) {
     const txt = await res.text();
     throw new Error(`API ${res.status}: ${txt.slice(0, 400)}`);
   }
-
-  const d = await res.json();
-  if (d.error) throw new Error(`${d.error.type}: ${d.error.message}`);
-  return d;
+  return res;
 }
 
 export function normaliseMime(type, filename) {
@@ -339,9 +334,10 @@ export async function fromGoogleDoc(docText) {
 
 // ─── Conversational plant chat (no JSON schema) ────────────────────────────────
 
-export async function chatAboutPlant(plantName, messages) {
-  const system = `You are a friendly, knowledgeable gardening assistant specialising in the home garden at Condé-en-Normandy, France (Zone RHS H4 / USDA 8b, oceanic climate). The user is asking specifically about their ${plantName}. Give practical, clear advice. Keep responses concise — 2-4 sentences unless a longer answer is genuinely needed. Use Markdown (short paragraphs, "- " bullet lists with each item on its own line, **bold** for key numbers) when it makes the answer easier to scan. Today is ${todayLabel()}.`;
+// Streams the answer: onText gets the answer so far, onSearch fires when a web search starts
+export async function chatAboutPlant(plantName, messages, { onText, onSearch } = {}) {
+  const system = `You are a friendly, knowledgeable gardening assistant specialising in the home garden at Condé-en-Normandy, France (Zone RHS H4 / USDA 8b, oceanic climate). The user is asking specifically about their ${plantName}. Give practical, clear advice. Keep responses concise — 2-4 sentences unless a longer answer is genuinely needed. Use Markdown (short paragraphs, "- " bullet lists with each item on its own line, **bold** for key numbers) when it makes the answer easier to scan. Don't list sources at the end; the app shows the pages you cite. Today is ${todayLabel()}.`;
 
-  const d = await requestClaude(system, messages, { purpose: "chat", maxTokens: 2000 });
-  return { text: textOf(d), sources: sourcesOf(d) };
+  const res = await postToProxy({ system, messages, purpose: "chat", maxTokens: 2000, stream: true });
+  return readAnswerStream(res.body, { onText, onSearch });
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PlantChat from "./PlantChat";
 
@@ -17,7 +17,7 @@ describe("PlantChat", () => {
   it("renders answers as formatted text with source links, not raw symbols", async () => {
     chatAboutPlant.mockResolvedValue({
       text: "Cut when **two-thirds open**.\n\n- Morning is best\n- Hang upside down",
-      sources: [{ url: "https://www.rhs.org.uk/celosia", title: "RHS" }],
+      sources: [{ url: "https://www.rhs.org.uk/celosia", title: "RHS" }, { url: "https://www.rhs.org.uk/drying", title: "RHS drying" }],
     });
     render(<PlantChat seed={seed} />);
     await userEvent.type(screen.getByLabelText("Ask about your Celosia"), "When to cut?{Enter}");
@@ -26,20 +26,28 @@ describe("PlantChat", () => {
     expect(bold.tagName).toBe("STRONG");
     expect(screen.queryByText(/\*\*/)).not.toBeInTheDocument();
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
-    const source = screen.getByRole("link", { name: "rhs.org.uk" });
+    const source = screen.getByRole("link", { name: "rhs.org.uk" }); // two RHS pages, one link
     expect(source).toHaveAttribute("href", "https://www.rhs.org.uk/celosia");
     expect(source).toHaveAttribute("target", "_blank");
   });
 
-  it("shows a thinking indicator while waiting", async () => {
-    let finish;
-    chatAboutPlant.mockReturnValue(new Promise(r => { finish = r; }));
+  it("shows thinking, then searching, then the answer as it streams in", async () => {
+    let handlers, finish;
+    chatAboutPlant.mockImplementation((name, msgs, h) => { handlers = h; return new Promise(r => { finish = r; }); });
     render(<PlantChat seed={seed} />);
     await userEvent.type(screen.getByLabelText("Ask about your Celosia"), "Hi{Enter}");
-    expect(within(screen.getByRole("status")).getByText("Searching and thinking…")).toBeInTheDocument();
-    finish({ text: "Hello", sources: [] });
-    expect(await screen.findByText("Hello")).toBeInTheDocument();
+    expect(within(screen.getByRole("status")).getByText("Thinking…")).toBeInTheDocument();
+
+    act(() => handlers.onSearch());
+    expect(within(screen.getByRole("status")).getByText("Searching the web…")).toBeInTheDocument();
+
+    act(() => handlers.onText("Water **weekly**"));
+    expect(screen.getByText("weekly").tagName).toBe("STRONG");
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+    await act(async () => finish({ text: "Water **weekly** at the base.", sources: [] }));
+    expect(screen.getByText(/at the base/)).toBeInTheDocument();
+    expect(screen.getAllByText("weekly")).toHaveLength(1);
   });
 
   it("says plainly when an answer fails, without technical detail", async () => {

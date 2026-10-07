@@ -57,24 +57,16 @@ describe("prompts use the real current date", () => {
 });
 
 describe("chatAboutPlant", () => {
-  it("asks the server for the chat model", async () => {
+  it("asks the server for the chat model and streams the answer", async () => {
     const { chatAboutPlant } = await import("./claude");
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ content: [{ type: "text", text: "Water weekly." }] })));
+    const sse = 'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Water weekly."}}\n\n';
+    const fetchMock = vi.fn(async () => new Response(sse, { headers: { "Content-Type": "text/event-stream" } }));
     vi.stubGlobal("fetch", fetchMock);
-    await chatAboutPlant("Celosia", [{ role: "user", content: "How often?" }]);
-    expect(JSON.parse(fetchMock.mock.calls[0][1].body).purpose).toBe("chat");
+    const reply = await chatAboutPlant("Celosia", [{ role: "user", content: "How often?" }]);
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.purpose).toBe("chat");
+    expect(sent.stream).toBe(true);
+    expect(reply.text).toBe("Water weekly.");
   });
 });
 
-describe("sourcesOf", () => {
-  it("lists each cited page once", async () => {
-    const { sourcesOf } = await import("./claude");
-    const d = { content: [
-      { type: "server_tool_use" },
-      { type: "text", text: "a", citations: [{ url: "https://a.com/x", title: "A" }] },
-      { type: "text", text: "b", citations: [{ url: "https://a.com/x", title: "A" }, { url: "https://b.org", title: "B" }] },
-      { type: "text", text: "c" },
-    ] };
-    expect(sourcesOf(d)).toEqual([{ url: "https://a.com/x", title: "A" }, { url: "https://b.org", title: "B" }]);
-  });
-});
