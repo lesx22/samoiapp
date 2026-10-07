@@ -3,7 +3,7 @@ import { supabase } from "./supabase";
 // ─── Claude API ───────────────────────────────────────────────────────────────
 // Calls go through our /api/claude proxy, which holds the Anthropic key.
 
-export async function callClaude(system, messages, { maxTokens = 8000, _attempt = 0 } = {}) {
+export async function callClaude(system, messages, { maxTokens = 8000, purpose = "plant", _attempt = 0 } = {}) {
   const { data: { session } } = await supabase.auth.getSession();
   const res = await fetch("/api/claude", {
     method: "POST",
@@ -11,7 +11,7 @@ export async function callClaude(system, messages, { maxTokens = 8000, _attempt 
       "Content-Type": "application/json",
       Authorization: `Bearer ${session?.access_token ?? ""}`,
     },
-    body: JSON.stringify({ system, messages, maxTokens }),
+    body: JSON.stringify({ system, messages, maxTokens, purpose }),
   });
 
   // Rate limited — wait and retry up to 3 times
@@ -22,7 +22,7 @@ export async function callClaude(system, messages, { maxTokens = 8000, _attempt 
     }
     const retryAfter = parseInt(res.headers.get("retry-after") || "60", 10);
     await new Promise(r => setTimeout(r, retryAfter * 1000));
-    return callClaude(system, messages, { maxTokens, _attempt: _attempt + 1 });
+    return callClaude(system, messages, { maxTokens, purpose, _attempt: _attempt + 1 });
   }
 
   if (!res.ok) {
@@ -324,6 +324,6 @@ export async function fromGoogleDoc(docText) {
 export async function chatAboutPlant(plantName, messages) {
   const system = `You are a friendly, knowledgeable gardening assistant specialising in the home garden at Condé-en-Normandy, France (Zone RHS H4 / USDA 8b, oceanic climate). The user is asking specifically about their ${plantName}. Give practical, clear advice. Keep responses concise — 2-4 sentences unless a longer answer is genuinely needed. Today is ${todayLabel()}.`;
 
-  const raw = await callClaude(system, messages);
+  const raw = await callClaude(system, messages, { purpose: "chat", maxTokens: 2000 });
   return raw;
 }

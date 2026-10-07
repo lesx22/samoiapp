@@ -19,7 +19,7 @@ describe("callClaude", () => {
     expect(url).toBe("/api/claude");
     expect(init.headers.Authorization).toBe("Bearer user-token");
     expect(init.headers["x-api-key"]).toBeUndefined();
-    expect(JSON.parse(init.body)).toEqual({ system: "sys", messages: [{ role: "user", content: "hi" }], maxTokens: 500 });
+    expect(JSON.parse(init.body)).toEqual({ system: "sys", messages: [{ role: "user", content: "hi" }], maxTokens: 500, purpose: "plant" });
   });
 
   it("surfaces proxy errors", async () => {
@@ -53,5 +53,15 @@ describe("prompts use the real current date", () => {
     await chatAboutPlant("Tomato", [{ role: "user", content: "When do I prune?" }]);
 
     expect(JSON.parse(fetchMock.mock.calls[0][1].body).system).toContain("Today is 7 October 2026.");
+  });
+});
+
+describe("chatAboutPlant", () => {
+  it("asks the server for the chat model", async () => {
+    const { chatAboutPlant } = await import("./claude");
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ content: [{ type: "text", text: "Water weekly." }] })));
+    vi.stubGlobal("fetch", fetchMock);
+    await chatAboutPlant("Celosia", [{ role: "user", content: "How often?" }]);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).purpose).toBe("chat");
   });
 });

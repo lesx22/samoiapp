@@ -63,6 +63,18 @@ describe("POST /api/claude", () => {
     expect(sent.messages).toEqual(validBody.messages);
   });
 
+  it("uses the cheaper model for chat", async () => {
+    await POST(request({ ...validBody, purpose: "chat" }));
+    const sent = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(sent.model).toBe("claude-haiku-4-5-20251001");
+  });
+
+  it("refuses any purpose it doesn't know, so the browser can't pick a model", async () => {
+    const res = await POST(request({ ...validBody, purpose: "claude-opus-4-1" }));
+    expect(res.status).toBe(400);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // only the login check
+  });
+
   it("passes rate limits through with retry-after", async () => {
     fetchMock.mockImplementation(async url => url.startsWith(SUPABASE_URL)
       ? new Response("{}", { status: 200 })
