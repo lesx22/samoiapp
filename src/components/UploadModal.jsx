@@ -4,6 +4,7 @@ import { useSeedsContext } from "../context/SeedsContext";
 import { fromImage, fromText, fromURL, fromURLQuick, fromImageQuick, fromGoogleDoc, groupPhotos } from "../lib/claude";
 import { shrinkImage } from "../lib/image";
 import { supabase } from "../lib/supabase";
+import { linkPlaceholderName } from "../lib/links";
 
 function inferProvider(url) {
   try { return new URL(url).hostname.replace(/^www\./, ""); }
@@ -291,7 +292,7 @@ export default function UploadModal({ isOpen, onClose, editSeedId = null, editSe
     }
     const displayName =
       selectedCatalogEntry?.name ||
-      (urlVal.trim() ? "Fetching from URL…" : null) ||
+      (urlVal.trim() ? linkPlaceholderName(urlVal) : null) ||
       (images.length > 0 ? "Photo upload" : null) ||
       nameVal.trim() || "your plant";
     setZoneData({ displayName, inputs: { images: [...images], urlVal, nameVal, selectedCatalogEntry } });
