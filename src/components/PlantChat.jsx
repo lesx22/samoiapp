@@ -24,12 +24,21 @@ export default function PlantChat({ seed }) {
   });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [draft, setDraft] = useState(null); // answer being streamed in: { text, searching }
   const bottomRef = useRef();
   const inputRef = useRef();
 
+  // Jump to the newest message when one is sent or finishes
   useEffect(() => {
     bottomRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
-  }, [messages, loading]);
+  }, [messages.length, loading]);
+
+  // While an answer streams in, follow it only if the reader is already at the bottom
+  useEffect(() => {
+    if (!draft) return;
+    const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 200;
+    if (nearBottom) bottomRef.current?.scrollIntoView?.({ block: "end" });
+  }, [draft]);
 
   useEffect(() => {
     try { localStorage.setItem(storageKey, JSON.stringify(messages)); }
@@ -44,13 +53,18 @@ export default function PlantChat({ seed }) {
     const newMessages = [...messages, { role: "user", content: text }];
     setMessages(newMessages);
     setLoading(true);
+    setDraft({ text: "", searching: false });
 
     try {
-      const reply = await chatAboutPlant(seed.name, newMessages.map(m => ({ role: m.role, content: m.content })));
+      const reply = await chatAboutPlant(seed.name, newMessages.map(m => ({ role: m.role, content: m.content })), {
+        onText: text => setDraft(d => ({ ...d, text, searching: false })),
+        onSearch: () => setDraft(d => ({ ...d, searching: true })),
+      });
       setMessages(prev => [...prev, { role: "assistant", content: reply.text, sources: reply.sources }]);
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I couldn't get an answer just now. Please try again.", failed: true }]);
     } finally {
+      setDraft(null);
       setLoading(false);
       inputRef.current?.focus();
     }
@@ -78,11 +92,19 @@ export default function PlantChat({ seed }) {
           </div>
         ))}
 
-        {loading && (
+        {loading && draft?.text && (
+          <div className="chat-row chat-row--assistant">
+            <div className="chat-bubble chat-bubble--assistant">
+              <div className="chat-md"><Markdown components={markdownComponents}>{tidyBullets(draft.text)}</Markdown></div>
+            </div>
+          </div>
+        )}
+
+        {loading && (!draft?.text || draft.searching) && (
           <div className="chat-row chat-row--assistant">
             <div className="chat-bubble chat-bubble--assistant chat-thinking" role="status">
               <span className="typing-dots" aria-hidden="true"><span /><span /><span /></span>
-              <span>Searching and thinking…</span>
+              <span>{draft?.searching ? "Searching the web…" : "Thinking…"}</span>
             </div>
           </div>
         )}
@@ -107,12 +129,15 @@ export default function PlantChat({ seed }) {
 }
 
 function Sources({ sources }) {
+  // One link per site, so two pages from the same site don't repeat
+  const bySite = new Map();
+  for (const s of sources) if (!bySite.has(hostOf(s.url))) bySite.set(hostOf(s.url), s);
   return (
     <div className="chat-sources">
       <span className="chat-sources__label">Sources</span>
-      {sources.slice(0, MAX_SOURCES).map(s => (
-        <a key={s.url} href={s.url} target="_blank" rel="noreferrer" title={s.title} className="chat-source">
-          {hostOf(s.url)}
+      {[...bySite].slice(0, MAX_SOURCES).map(([host, s]) => (
+        <a key={host} href={s.url} target="_blank" rel="noreferrer" title={s.title} className="chat-source">
+          {host}
         </a>
       ))}
     </div>

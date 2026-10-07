@@ -41,7 +41,7 @@ export async function POST(request) {
   } catch {
     return json(400, { error: "Invalid JSON body" });
   }
-  const { system, messages, maxTokens, purpose = "plant" } = body;
+  const { system, messages, maxTokens, purpose = "plant", stream = false } = body;
   const model = MODELS[purpose];
   if (!model) {
     return json(400, { error: "purpose must be plant or chat" });
@@ -63,8 +63,17 @@ export async function POST(request) {
       system,
       messages,
       tools: [{ type: "web_search_20250305", name: "web_search" }],
+      ...(stream ? { stream: true } : {}),
     }),
   });
+
+  // Streamed answers are passed through piece by piece as server-sent events
+  if (stream && upstream.ok) {
+    return new Response(upstream.body, {
+      status: 200,
+      headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
+    });
+  }
 
   // Pass Anthropic's response straight through, keeping retry-after for 429s
   const headers = { "Content-Type": "application/json" };

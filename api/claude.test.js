@@ -96,3 +96,28 @@ describe("POST /api/claude", () => {
     expect((await res.json()).error).toMatch(/ANTHROPIC_API_KEY/);
   });
 });
+
+describe("POST /api/claude streaming", () => {
+  beforeEach(() => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "server-key");
+    vi.stubEnv("VITE_SUPABASE_URL", SUPABASE_URL);
+    vi.stubEnv("VITE_SUPABASE_ANON_KEY", "anon-key");
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  it("asks Anthropic to stream and passes the events straight through", async () => {
+    const events = 'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hi"}}\n\n';
+    const fetchMock = vi.fn(async url => url.startsWith(SUPABASE_URL)
+      ? new Response("{}", { status: 200 })
+      : new Response(events, { status: 200, headers: { "Content-Type": "text/event-stream" } }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const res = await POST(request({ ...validBody, purpose: "chat", stream: true }));
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).stream).toBe(true);
+    expect(res.headers.get("content-type")).toBe("text/event-stream");
+    expect(await res.text()).toBe(events);
+  });
+});
