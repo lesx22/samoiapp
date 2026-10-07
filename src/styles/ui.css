@@ -93,7 +93,8 @@
 .ui-title    { font-family: var(--font-sans); font-size: var(--type-title); font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
 .ui-subtitle { font-family: var(--font-sans); font-size: var(--type-subtitle); font-weight: 600; line-height: 1.35; }
 .ui-body     { font-size: var(--type-body); line-height: 1.5; }
-.ui-small    { font-size: var(--type-small); line-height: 1.45; color: var(--color-text-subtle); }
+.ui-small    { display: block; font-size: var(--type-small); line-height: 1.45; color: var(--color-text-subtle); }
+.ui-subtitle { display: block; }
 .ui-label    {
   font-family: var(--font-sans);
   font-size: var(--type-label);
@@ -281,6 +282,17 @@
   padding: var(--space-3) var(--card-pad);
 }
 
+.ui-list-row--link {
+  color: inherit;
+  text-decoration: none;
+  transition: background var(--dur-fast) var(--ease);
+}
+.ui-list-row--link:hover { background: var(--color-surface); color: inherit; }
+.ui-list-row--link:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
+
+.ui-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ui-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
 /* ─── Inputs ───────────────────────────────────────────────────────────────── */
 
 .ui-field { display: flex; flex-direction: column; gap: var(--space-1); }
@@ -406,6 +418,127 @@
 .ui-segmented button[aria-pressed="true"] { background: var(--color-bg); color: var(--color-text); box-shadow: 0 1px 2px rgba(17, 17, 17, 0.08); }
 .ui-segmented button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
+/* ─── Sheet (filters and other secondary tasks) ────────────────────────────── */
+
+.ui-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  background: var(--color-overlay);
+  animation: uiFade var(--dur) var(--ease);
+}
+.ui-sheet {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-height: 88vh;
+  background: var(--color-bg);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+  outline: none;
+  animation: uiSlideUp var(--dur) var(--ease);
+}
+.ui-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--gutter) var(--space-2);
+}
+.ui-sheet__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-2) var(--gutter) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.ui-sheet__footer {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--gutter) calc(var(--space-3) + env(safe-area-inset-bottom));
+  border-top: var(--line) solid var(--line-color);
+}
+.ui-sheet__footer > * { flex: 1; }
+
+@media (min-width: 768px) {
+  .ui-sheet-backdrop { justify-content: flex-end; align-items: stretch; }
+  .ui-sheet { width: 400px; max-height: none; border-radius: 0; animation-name: uiSlideIn; }
+  .ui-sheet__header, .ui-sheet__body, .ui-sheet__footer { padding-left: var(--space-6); padding-right: var(--space-6); }
+}
+
+@keyframes uiFade    { from { opacity: 0; } }
+@keyframes uiSlideUp { from { transform: translateY(24px); opacity: 0; } }
+@keyframes uiSlideIn { from { transform: translateX(24px); opacity: 0; } }
+
+.ui-option-group { border: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.ui-option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-h-sm);
+  padding: 0 var(--space-3);
+  border: var(--line) solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg);
+  font-size: var(--type-small);
+  font-weight: 500;
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.ui-option:hover { border-color: var(--color-text-subtle); }
+.ui-option[aria-pressed="true"] { background: var(--color-green-tint); border-color: var(--color-green); color: var(--color-green); }
+.ui-option:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.ui-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+/* A toolbar that sticks under the nav; on phones it slides away on scroll down */
+.ui-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0 calc(-1 * var(--gutter)) var(--stack);
+  padding: var(--space-3) var(--gutter);
+  background: var(--color-bg);
+  border-bottom: var(--line) solid var(--line-color);
+  transition: transform var(--dur) var(--ease);
+}
+.ui-toolbar--hidden { transform: translateY(-110%); }
+@media (min-width: 768px) {
+  .ui-toolbar { top: var(--nav-height); }
+  .ui-toolbar--hidden { transform: none; }
+}
+
+/* List toolbar layout. Phone: search and Filter, then sort and view, then chips.
+   Desktop: search, Filter, sort and view on one line, chips below. */
+.ui-toolbar__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "search filter" "end end" "chips chips";
+  gap: var(--space-3) var(--space-2);
+  align-items: center;
+}
+.ui-toolbar__search { grid-area: search; }
+.ui-toolbar__filter { grid-area: filter; }
+.ui-toolbar__chips  { grid-area: chips; }
+.ui-toolbar__end    { grid-area: end; justify-self: end; }
+@media (min-width: 768px) {
+  .ui-toolbar__grid {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: "search filter end" "chips chips chips";
+  }
+}
+
 /* ─── Swatches (preview page only) ─────────────────────────────────────────── */
 
 .ui-swatch { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--type-small); }
@@ -413,10 +546,15 @@
 .ui-space-bar { height: 12px; background: var(--color-green-pale); border-radius: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .ui-app-header, .ui-btn, .ui-card--interactive { transition: none; }
+  .ui-app-header, .ui-btn, .ui-card--interactive, .ui-toolbar { transition: none; }
+  .ui-sheet, .ui-sheet-backdrop { animation: none; }
   .ui-btn:active:not(:disabled) { transform: none; }
 }
 
+/* !important so these win over a component's own display value */
 @media (min-width: 768px) {
-  .hide-on-desktop { display: none; }
+  .hide-on-desktop { display: none !important; }
+}
+@media (max-width: 767px) {
+  .hide-on-phone { display: none !important; }
 }

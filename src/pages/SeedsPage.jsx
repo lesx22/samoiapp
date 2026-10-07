@@ -1,14 +1,18 @@
-import { useState, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
 import { badge, taskGuidance } from "../data/garden";
+import { EMPTY_FILTERS, activeFilters, filterPlants, sortPlants, statusLabel, statusRank } from "../lib/plantFilters";
+import {
+  Button, Card, SearchInput, Select, Tag, Chip, Segmented, Sheet, OptionGroup, Field, Icon, useHideOnScroll,
+} from "../ui";
 
-// ─── Color palette for dots ───────────────────────────────────────────────────
+// ─── Colour dots ──────────────────────────────────────────────────────────────
 
 const COLOR_DOTS = {
   "Pink":            "#f9a8d4",
   "Coral pink":      "#fb7185",
-  "White":           "#e5e7eb",
+  "White":           "#ffffff",
   "Yellow":          "#fde047",
   "Orange":          "#fb923c",
   "Black":           "#374151",
@@ -21,765 +25,277 @@ const COLOR_DOTS = {
   "Lavender/Purple": "#a78bfa",
 };
 
-// ─── SelectWithCaret ──────────────────────────────────────────────────────────
-// Wraps a <select> in a relative div and overlays a ▾ caret at a fixed right
-// offset — reliable on every browser, no data-URL encoding needed.
+const STATUS_TONE = { sow: "green", harvest: "warn" };
+const PAGE_SIZE = 40;
+const VIEW_KEY = "jardin-view";
 
-function SelectWithCaret({ selectStyle, wrapStyle, value, onChange, label, children }) {
-  return (
-    <div style={{ position: "relative", display: "inline-block", ...wrapStyle }}>
-      <select
-        value={value}
-        onChange={onChange}
-        aria-label={label}
-        style={{
-          appearance: "none",
-          WebkitAppearance: "none",
-          cursor: "pointer",
-          paddingRight: "2rem",
-          ...selectStyle,
-        }}
-      >
-        {children}
-      </select>
-      <span
-        aria-hidden="true"
-        style={{
-          position: "absolute",
-          right: 10,
-          top: "50%",
-          transform: "translateY(-50%)",
-          pointerEvents: "none",
-          fontSize: "24px",
-          color: value ? "var(--color-green)" : "var(--color-text-muted)",
-          lineHeight: 1,
-        }}
-      >
-        ▾
-      </span>
-    </div>
-  );
+const SORTS = [
+  { value: "newest", label: "Newest" },
+  { value: "az", label: "A to Z" },
+  { value: "status", label: "Status" },
+  { value: "zone", label: "Zone" },
+];
+
+function savedView() {
+  try { return localStorage.getItem(VIEW_KEY) || "list"; } catch { return "list"; }
 }
 
-// ─── Responsive width hook ────────────────────────────────────────────────────
+const uniq = values => [...new Set(values.filter(Boolean))];
 
-function useWindowWidth() {
-  const [width, setWidth] = useState(() => window.innerWidth);
-  useEffect(() => {
-    const handle = () => setWidth(window.innerWidth);
-    window.addEventListener("resize", handle);
-    return () => window.removeEventListener("resize", handle);
-  }, []);
-  return width;
-}
-
-// ─── Sort order for status ────────────────────────────────────────────────────
-
-const STATUS_ORDER = { "SOW NOW": 0, "TRANSPLANT NOW": 1, "HARVEST NOW": 2, "SEASON DONE": 99 };
-
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SeedsPage({ onUpload }) {
-  const { seeds } = useSeedsContext();
-  const navigate = useNavigate();
-  const width = useWindowWidth();
-  const isDesktop = width >= 768;
+  const { seeds, zones } = useSeedsContext();
+  const toolbarHidden = useHideOnScroll();
 
-  // View — persisted across sessions
-  const [view, setView] = useState(() => localStorage.getItem("jardin-view") || "list");
+  const [view, setView] = useState(savedView);
+  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [sort, setSort] = useState("newest");
+  const [shown, setShown] = useState(PAGE_SIZE);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [draft, setDraft] = useState(EMPTY_FILTERS);
 
-  // Filters — session only, reset on page load
-  const [search, setSearch]                   = useState("");
-  const [filterCategory, setFilterCategory]   = useState("");
-  const [filterPlantType, setFilterPlantType] = useState("");
-  const [filterColor, setFilterColor]         = useState("");
-  const [filterStatus, setFilterStatus]       = useState("");
-  const [filterZone, setFilterZone]           = useState("");
-  const [sort, setSort]                       = useState("newest");
-  const [showFilters, setShowFilters]         = useState(false);
+  const zoneName = id => zones.find(z => z.id === id)?.name ?? id;
+  const zoneOrder = useMemo(() => zones.map(z => z.id), [zones]);
 
-  // Derived filter options — only what's present in the data
-  const categories = useMemo(
-    () => [...new Set(seeds.map(s => s.category).filter(Boolean))].sort(),
-    [seeds],
+  const filtered = useMemo(
+    () => sortPlants(filterPlants(seeds, search, filters), sort, zoneOrder),
+    [seeds, search, filters, sort, zoneOrder],
   );
-  const plantTypes = useMemo(
-    () => [...new Set(seeds.map(s => s.plantType).filter(Boolean))].sort(),
-    [seeds],
-  );
-  const colors = useMemo(
-    () => [...new Set(seeds.map(s => s.color).filter(Boolean))],
-    [seeds],
-  );
-  const zones = useMemo(
-    () => [...new Set(seeds.map(s => s.zoneId).filter(Boolean))].sort(),
-    [seeds],
-  );
-  const statuses = useMemo(
-    () => [...new Set(seeds.map(s => badge(s).t))],
-    [seeds],
-  );
+  const draftCount = useMemo(() => filterPlants(seeds, search, draft).length, [seeds, search, draft]);
+  const applied = activeFilters(filters);
 
-  // Filtered + sorted list
-  const filtered = useMemo(() => {
-    let r = seeds;
+  // Changing what's listed starts paging again from the top
+  const update = setter => value => { setter(value); setShown(PAGE_SIZE); };
+  const applyFilters = update(setFilters);
 
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      r = r.filter(s =>
-        s.name?.toLowerCase().includes(q) ||
-        s.variety?.toLowerCase().includes(q) ||
-        s.brand?.toLowerCase().includes(q),
-      );
-    }
-    if (filterCategory)  r = r.filter(s => s.category === filterCategory);
-    if (filterPlantType) r = r.filter(s => s.plantType === filterPlantType);
-    if (filterColor)     r = r.filter(s => s.color === filterColor);
-    if (filterStatus)   r = r.filter(s => badge(s).t === filterStatus);
-    if (filterZone)     r = r.filter(s => s.zoneId === filterZone);
-
-    r = [...r];
-    if (sort === "newest") {
-      r.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
-    } else if (sort === "az") {
-      r.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-    } else if (sort === "status") {
-      r.sort((a, b) => {
-        const ao = STATUS_ORDER[badge(a).t] ?? 50;
-        const bo = STATUS_ORDER[badge(b).t] ?? 50;
-        return ao !== bo ? ao - bo : (a.name || "").localeCompare(b.name || "");
-      });
-    } else if (sort === "zone") {
-      r.sort((a, b) => (a.zoneId || "zzz").localeCompare(b.zoneId || "zzz"));
-    }
-    return r;
-  }, [seeds, search, filterCategory, filterPlantType, filterColor, filterStatus, filterZone, sort]);
-
-  const activeFilterCount = [filterCategory, filterPlantType, filterColor, filterStatus, filterZone].filter(Boolean).length;
-
-  function handleViewToggle(v) {
+  function changeView(v) {
     setView(v);
-    localStorage.setItem("jardin-view", v);
+    try { localStorage.setItem(VIEW_KEY, v); } catch { /* private mode: view just isn't remembered */ }
   }
 
-  const stickyTop = isDesktop ? "var(--nav-height)" : 0;
+  function openSheet() { setDraft(filters); setSheetOpen(true); }
+
+  const chipLabel = (key, value) =>
+    key === "zone" ? zoneName(value) : key === "status" ? statusLabel(value) : value;
 
   return (
-    <div className="page">
-
-      {/* ── Sticky sub-nav ─────────────────────────────────────────────── */}
-      <div style={{
-        position: "sticky",
-        top: stickyTop,
-        zIndex: 10,
-        background: "var(--color-bg)",
-        borderBottom: "1.5px solid var(--color-border)",
-        marginLeft: "calc(-1 * var(--space-md))",
-        marginRight: "calc(-1 * var(--space-md))",
-        paddingLeft: "var(--space-md)",
-        paddingRight: "var(--space-md)",
-        paddingTop: "var(--space-md)",
-        paddingBottom: "var(--space-md)",
-        marginBottom: "var(--space-md)",
-      }}>
-
-        {/* Row 1: Title · count · view toggle · add button */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-sm)",
-          marginBottom: "var(--space-sm)",
-        }}>
-          <h1 style={{ flex: 1, fontSize: "var(--text-h2)", margin: 0, lineHeight: 1.2 }}>Plants</h1>
-          <span style={{
-            color: "var(--color-text-muted)",
-            fontSize: "var(--text-nav)",
-            flexShrink: 0,
-          }}>
-            {filtered.length}
-            {filtered.length !== seeds.length ? `\u202f/\u202f${seeds.length}` : ""}
-          </span>
-          <ViewToggle view={view} onChange={handleViewToggle} />
-          <button
-            className="btn-primary"
-            onClick={onUpload}
-            style={{ minHeight: 40, padding: "0 var(--space-md)", fontSize: "var(--text-nav)", fontWeight: 600, flexShrink: 0 }}
-          >
-            + Add
-          </button>
-        </div>
-
-        {/* Row 2: Search · filter toggle (mobile) · sort */}
-        <div style={{ display: "flex", gap: "var(--space-sm)", alignItems: "center" }}>
-          <input
-            type="search"
-            placeholder="Search plants…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ flex: 1, minHeight: 40, padding: "0 var(--space-md)", fontSize: "var(--text-small)" }}
-          />
-          {!isDesktop && (
-            <button
-              className="btn-ghost"
-              onClick={() => setShowFilters(f => !f)}
-              style={{ minHeight: 40, padding: "0 var(--space-md)", fontSize: "var(--text-small)", flexShrink: 0 }}
-            >
-              Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
-            </button>
-          )}
-          <SelectWithCaret
-            label="Sort plants"
-            value={sort}
-            onChange={e => setSort(e.target.value)}
-            wrapStyle={{ flexShrink: 0 }}
-            selectStyle={{
-              minHeight: 40,
-              padding: "0 2rem 0 var(--space-md)",
-              fontSize: "var(--text-small)",
-              border: "2px solid var(--color-border)",
-              borderRadius: "var(--radius-sm)",
-              background: "var(--color-bg)",
-              color: "var(--color-text)",
-            }}
-          >
-            <option value="newest">Newest</option>
-            <option value="az">A – Z</option>
-            <option value="status">By status</option>
-            {zones.length > 0 && <option value="zone">By zone</option>}
-          </SelectWithCaret>
-        </div>
-
-        {/* Filter dropdowns — always on desktop, toggled on mobile */}
-        {(isDesktop || showFilters) && (
-          <div style={{ display: "flex", gap: "var(--space-sm)", marginTop: "var(--space-sm)", flexWrap: "wrap" }}>
-            {categories.length > 0 && (
-              <FilterSelect
-                label="Category"
-                value={filterCategory}
-                onChange={v => { setFilterCategory(v); setFilterPlantType(""); }}
-                options={categories}
-              />
-            )}
-            {plantTypes.length > 0 && (
-              <FilterSelect
-                label="Plant type"
-                value={filterPlantType}
-                onChange={setFilterPlantType}
-                options={plantTypes}
-              />
-            )}
-            {colors.length > 0 && (
-              <FilterSelect
-                label="Color"
-                value={filterColor}
-                onChange={setFilterColor}
-                options={colors}
-              />
-            )}
-            {zones.length > 0 && (
-              <FilterSelect
-                label="Zone"
-                value={filterZone}
-                onChange={setFilterZone}
-                options={zones}
-              />
-            )}
-            {statuses.length > 0 && (
-              <FilterSelect
-                label="Status"
-                value={filterStatus}
-                onChange={setFilterStatus}
-                options={statuses}
-              />
-            )}
-            {activeFilterCount > 0 && (
-              <button
-                onClick={() => {
-                  setFilterCategory("");
-                  setFilterPlantType("");
-                  setFilterColor("");
-                  setFilterStatus("");
-                  setFilterZone("");
-                }}
-                style={{
-                  minHeight: 36,
-                  padding: "0 var(--space-sm)",
-                  fontSize: "var(--text-small)",
-                  background: "transparent",
-                  border: "none",
-                  color: "var(--color-text-muted)",
-                  cursor: "pointer",
-                  textDecoration: "underline",
-                }}
-              >
-                Clear all
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Active filter chips */}
-        {activeFilterCount > 0 && (
-          <div style={{ display: "flex", gap: "var(--space-xs)", flexWrap: "wrap", marginTop: "var(--space-sm)" }}>
-            {filterCategory && (
-              <FilterChip label={filterCategory} onRemove={() => setFilterCategory("")} />
-            )}
-            {filterPlantType && (
-              <FilterChip label={filterPlantType} onRemove={() => setFilterPlantType("")} />
-            )}
-            {filterColor && (
-              <FilterChip
-                label={filterColor}
-                dotColor={COLOR_DOTS[filterColor]}
-                isWhite={filterColor === "White"}
-                onRemove={() => setFilterColor("")}
-              />
-            )}
-            {filterStatus && (
-              <FilterChip label={filterStatus} onRemove={() => setFilterStatus("")} />
-            )}
-            {filterZone && (
-              <FilterChip label={filterZone} onRemove={() => setFilterZone("")} />
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Empty state (no plants at all) ─────────────────────────────── */}
-      {seeds.length === 0 && (
-        <div style={{
-          textAlign: "center",
-          padding: "var(--space-2xl) 0",
-          color: "var(--color-text-muted)",
-        }}>
-          <div style={{ fontSize: "3rem", marginBottom: "var(--space-md)" }}>🌱</div>
-          <h2 className="h3" style={{ marginBottom: "var(--space-sm)", color: "var(--color-text-muted)" }}>
-            No plants yet
-          </h2>
-          <p style={{ marginBottom: "var(--space-lg)" }}>
-            Upload seed packet photos, paste a product URL or Google Doc, or search by name.
+    <div className="ui-page ui-page--with-actions">
+      <div className="ui-page-header">
+        <div>
+          <h1 className="ui-display">Plants</h1>
+          <p className="ui-small">
+            {filtered.length === seeds.length
+              ? `${seeds.length} plant${seeds.length === 1 ? "" : "s"}`
+              : `${filtered.length} of ${seeds.length} plants`}
           </p>
-          <button className="btn-secondary" onClick={onUpload}>
-            Add your first plant
-          </button>
         </div>
-      )}
+        <Button icon="plus" onClick={onUpload} className="hide-on-phone">Add plants</Button>
+      </div>
 
-      {/* ── No results from filter ──────────────────────────────────────── */}
-      {seeds.length > 0 && filtered.length === 0 && (
-        <div style={{ textAlign: "center", padding: "var(--space-2xl) 0", color: "var(--color-text-muted)" }}>
-          <div style={{ fontSize: "2rem", marginBottom: "var(--space-md)" }}>🔍</div>
-          <p>No plants match your filters.</p>
-          <button
-            onClick={() => {
-              setSearch("");
-              setFilterCategory("");
-              setFilterPlantType("");
-              setFilterColor("");
-              setFilterStatus("");
-              setFilterZone("");
-            }}
-            style={{
-              marginTop: "var(--space-md)",
-              background: "none",
-              border: "none",
-              color: "var(--color-green)",
-              cursor: "pointer",
-              fontSize: "var(--text-small)",
-              textDecoration: "underline",
-              minHeight: "auto",
-            }}
-          >
-            Clear all filters
-          </button>
-        </div>
-      )}
-
-      {/* ── Plant list or grid ──────────────────────────────────────────── */}
-      {filtered.length > 0 && (
-        view === "list" ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-sm)", marginBottom: "var(--space-xl)" }}>
-            {filtered.map(seed => (
-              <PlantListRow
-                key={seed.id}
-                seed={seed}
-                onClick={() => navigate(`/seeds/${seed.id}`)}
+      {seeds.length > 0 && (
+        <div className={`ui-toolbar${toolbarHidden ? " ui-toolbar--hidden" : ""}`}>
+          <div className="ui-toolbar__grid">
+            <div className="ui-toolbar__search">
+              <SearchInput
+                label="Search plants"
+                placeholder="Search name, variety or brand"
+                value={search}
+                onChange={e => update(setSearch)(e.target.value)}
               />
-            ))}
+            </div>
+            <Button variant="secondary" icon="filter" onClick={openSheet} aria-haspopup="dialog" className="ui-toolbar__filter">
+              Filter
+              {applied.length > 0 && <span className="ui-tag ui-tag--green" aria-label={`${applied.length} on`}>{applied.length}</span>}
+            </Button>
+            <div className="ui-row ui-toolbar__end">
+              <Select
+                aria-label="Sort plants"
+                value={sort}
+                onChange={e => update(setSort)(e.target.value)}
+                style={{ width: "auto", minHeight: "var(--control-h-sm)", fontSize: "var(--type-small)" }}
+              >
+                {SORTS.filter(s => s.value !== "zone" || zones.length > 0).map(s => (
+                  <option key={s.value} value={s.value}>Sort: {s.label}</option>
+                ))}
+              </Select>
+              <Segmented label="View" value={view} onChange={changeView}
+                options={[{ value: "list", label: "List" }, { value: "grid", label: "Grid" }]} />
+            </div>
+            {applied.length > 0 && <div className="ui-row ui-toolbar__chips">
+              {applied.map(([key, value]) => (
+                <Chip key={key} onRemove={() => applyFilters({ ...filters, [key]: "" })}>
+                  {chipLabel(key, value)}
+                </Chip>
+              ))}
+              {applied.length > 1 && (
+                <Button variant="ghost" size="sm" onClick={() => applyFilters(EMPTY_FILTERS)}>Clear all</Button>
+              )}
+            </div>}
           </div>
-        ) : (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: "var(--space-md)",
-            marginBottom: "var(--space-xl)",
-          }}>
-            {filtered.map(seed => (
-              <SeedCard key={seed.id} seed={seed} onClick={() => navigate(`/seeds/${seed.id}`)} />
-            ))}
-          </div>
-        )
+        </div>
       )}
+
+      {seeds.length === 0 && (
+        <Card variant="muted" className="ui-stack" style={{ alignItems: "center", textAlign: "center", padding: "var(--space-12) var(--space-6)" }}>
+          <h2 className="ui-title">No plants yet</h2>
+          <p className="ui-small">Upload seed packet photos, paste a product link or Google Doc, or search by name.</p>
+          <Button icon="plus" onClick={onUpload}>Add your first plant</Button>
+        </Card>
+      )}
+
+      {seeds.length > 0 && filtered.length === 0 && (
+        <Card variant="muted" className="ui-stack" style={{ alignItems: "center", textAlign: "center", padding: "var(--space-10) var(--space-6)" }}>
+          <p>No plants match your search and filters.</p>
+          <Button variant="secondary" onClick={() => { setSearch(""); applyFilters(EMPTY_FILTERS); }}>Clear search and filters</Button>
+        </Card>
+      )}
+
+      {filtered.length > 0 && (view === "list" ? (
+        <Card variant="flush">
+          <ul className="ui-list">
+            {filtered.slice(0, shown).map(seed => (
+              <li key={seed.id}><PlantRow seed={seed} zoneName={seed.zoneId ? zoneName(seed.zoneId) : null} /></li>
+            ))}
+          </ul>
+        </Card>
+      ) : (
+        <ul className="ui-grid" style={{ listStyle: "none", padding: 0 }}>
+          {filtered.slice(0, shown).map(seed => <li key={seed.id} style={{ display: "flex" }}><PlantCard seed={seed} /></li>)}
+        </ul>
+      ))}
+
+      {filtered.length > PAGE_SIZE && (
+        <div className="ui-stack" style={{ alignItems: "center", gap: "var(--space-2)", marginTop: "var(--stack)" }}>
+          <p className="ui-small" aria-live="polite">Showing {Math.min(shown, filtered.length)} of {filtered.length}</p>
+          {shown < filtered.length && (
+            <Button variant="secondary" onClick={() => setShown(n => n + PAGE_SIZE)}>
+              Show {Math.min(PAGE_SIZE, filtered.length - shown)} more
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* Phones: the main action stays at the bottom of the screen */}
+      <div className="ui-action-bar hide-on-desktop">
+        <Button icon="plus" onClick={onUpload}>Add plants</Button>
+      </div>
+
+      <FilterSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        seeds={seeds}
+        zones={zones}
+        draft={draft}
+        setDraft={setDraft}
+        count={draftCount}
+        onApply={() => { applyFilters(draft); setSheetOpen(false); }}
+      />
     </div>
   );
 }
 
-// ─── PlantListRow ─────────────────────────────────────────────────────────────
+// ─── Filter sheet ─────────────────────────────────────────────────────────────
+// Choices are a draft until "Show N plants", so the list doesn't jump while picking
 
-function PlantListRow({ seed, onClick }) {
-  const b = badge(seed);
+function FilterSheet({ open, onClose, seeds, zones, draft, setDraft, count, onApply }) {
+  const set = key => value => setDraft(d => ({
+    ...d,
+    [key]: value,
+    // A plant type from another category would match nothing
+    ...(key === "category" ? { plantType: "" } : {}),
+  }));
+
+  const usedZones = new Set(seeds.map(s => s.zoneId));
+  const statuses = uniq(seeds.map(s => badge(s).t)).sort((a, b) => statusRank(a) - statusRank(b));
+  const categories = uniq(seeds.map(s => s.category)).sort();
+  const plantTypes = uniq(seeds.filter(s => !draft.category || s.category === draft.category).map(s => s.plantType)).sort();
+  const colors = uniq(seeds.map(s => s.color));
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={e => e.key === "Enter" && onClick()}
-      className="card animate-fade-up"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "var(--space-md)",
-        padding: "var(--space-md) var(--space-lg)",
-        cursor: "pointer",
-        minHeight: "var(--touch-target)",
-        transition: "box-shadow 0.15s ease, background 0.1s ease",
-      }}
-      onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.08)"}
-      onMouseLeave={e => e.currentTarget.style.boxShadow = ""}
+    <Sheet
+      open={open}
+      title="Filter plants"
+      onClose={onClose}
+      footer={<>
+        <Button variant="secondary" onClick={() => setDraft(EMPTY_FILTERS)}>Clear all</Button>
+        <Button onClick={onApply} disabled={count === 0}>
+          {count === 0 ? "No matches" : `Show ${count} plant${count === 1 ? "" : "s"}`}
+        </Button>
+      </>}
     >
-      {/* Emoji */}
-      <span style={{ fontSize: "1.5rem", lineHeight: 1, flexShrink: 0, width: 32, textAlign: "center" }}>
-        {seed.emoji || "🌱"}
-      </span>
-
-      {/* Name + variety + days */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontWeight: 600,
-          fontSize: "var(--text-body)",
-          lineHeight: 1.3,
-          display: "flex",
-          alignItems: "center",
-          gap: "var(--space-xs)",
-        }}>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {seed.name}
-          </span>
-          {seed.loading && (
-            <span style={{
-              fontSize: "var(--text-small)",
-              color: "var(--color-text-muted)",
-              fontWeight: 400,
-              fontStyle: "italic",
-              flexShrink: 0,
-            }}>
-              Identifying…
-            </span>
-          )}
-          {seed.enriching && (
-            <span style={{
-              fontSize: "var(--text-small)",
-              color: "var(--color-text-muted)",
-              fontWeight: 400,
-              fontStyle: "italic",
-              flexShrink: 0,
-            }}>
-              Enriching…
-            </span>
-          )}
-        </div>
-        {(seed.variety && seed.variety !== "Standard") || seed.daysToMaturity ? (
-          <div style={{
-            fontSize: "var(--text-small)",
-            color: "var(--color-text-muted)",
-            lineHeight: 1.3,
-            marginTop: 2,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}>
-            {seed.variety && seed.variety !== "Standard" && (
-              <span style={{ fontStyle: "italic" }}>{seed.variety}</span>
-            )}
-            {seed.variety && seed.variety !== "Standard" && seed.daysToMaturity && (
-              <span> · </span>
-            )}
-            {seed.daysToMaturity && <span>{seed.daysToMaturity}</span>}
-          </div>
-        ) : null}
-      </div>
-
-      {/* Color dot */}
-      {seed.color && COLOR_DOTS[seed.color] && (
-        <span
-          style={{
-            width: 10,
-            height: 10,
-            borderRadius: "50%",
-            flexShrink: 0,
-            background: COLOR_DOTS[seed.color],
-            border: seed.color === "White" ? "1px solid var(--color-border)" : "none",
-          }}
-          title={seed.color}
-        />
+      <OptionGroup label="Status" value={draft.status} onChange={set("status")}
+        options={statuses.map(t => ({ value: t, label: statusLabel(t) }))} />
+      {zones.length > 0 && (
+        <OptionGroup label="Zone" value={draft.zone} onChange={set("zone")}
+          options={zones.filter(z => usedZones.has(z.id)).map(z => ({ value: z.id, label: z.name }))} />
       )}
-
-      {/* Status badge — bordered pill */}
-      <span style={{
-        fontSize: "11px",
-        fontWeight: 700,
-        color: seed.fetchError ? "var(--color-error)" : b.color,
-        border: `1.5px solid ${seed.fetchError ? "var(--color-error)" : b.color}`,
-        borderRadius: "100px",
-        padding: "3px 8px",
-        flexShrink: 0,
-        textTransform: "uppercase",
-        letterSpacing: "0.06em",
-        lineHeight: 1.4,
-        whiteSpace: "nowrap",
-      }}>
-        {seed.fetchError ? "Error" : b.t}
-      </span>
-    </div>
+      <OptionGroup label="Category" value={draft.category} onChange={set("category")}
+        options={categories.map(c => ({ value: c, label: c }))} />
+      <Field label="Plant type">
+        <Select value={draft.plantType} onChange={e => set("plantType")(e.target.value)}>
+          <option value="">Any plant type</option>
+          {plantTypes.map(t => <option key={t} value={t}>{t}</option>)}
+        </Select>
+      </Field>
+      <OptionGroup label="Colour" value={draft.color} onChange={set("color")}
+        options={colors.map(c => ({ value: c, label: c, dot: COLOR_DOTS[c] }))} />
+    </Sheet>
   );
 }
 
-// ─── SeedCard (grid view) ─────────────────────────────────────────────────────
+// ─── List row ─────────────────────────────────────────────────────────────────
 
-function SeedCard({ seed, onClick }) {
-  if (seed.loading) {
-    return (
-      <div
-        className="card animate-fade-up"
-        onClick={onClick}
-        style={{ cursor: "pointer", opacity: 0.75, transition: "box-shadow 0.15s ease" }}
-        onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.1)"}
-        onMouseLeave={e => e.currentTarget.style.boxShadow = ""}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-md)" }}>
-          <span style={{ fontSize: "2.5rem", lineHeight: 1 }}>🌱</span>
-          <span style={{ fontSize: "var(--text-nav)", color: "var(--color-text-muted)", fontStyle: "italic" }}>Identifying…</span>
-        </div>
-        <h2 className="h3" style={{ marginBottom: "var(--space-sm)" }}>{seed.name}</h2>
-        <div style={{ height: 3, background: "var(--color-border)", borderRadius: 2, overflow: "hidden" }}>
-          <div className="animate-pulse" style={{ height: "100%", width: "40%", background: "var(--color-green)", borderRadius: 2 }} />
-        </div>
-      </div>
-    );
-  }
-
-  if (seed.fetchError) {
-    return (
-      <div
-        className="card animate-fade-up"
-        onClick={onClick}
-        style={{ cursor: "pointer", borderColor: "rgba(192,57,43,0.3)", transition: "box-shadow 0.15s ease" }}
-        onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.1)"}
-        onMouseLeave={e => e.currentTarget.style.boxShadow = ""}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--space-md)" }}>
-          <span style={{ fontSize: "2.5rem", lineHeight: 1 }}>⚠️</span>
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>{seed.name}</div>
-            <div style={{ fontSize: "var(--text-small)", color: "var(--color-error)" }}>Tap to see details</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+function StatusTag({ seed }) {
+  if (seed.fetchError) return <Tag tone="error">Couldn't add</Tag>;
+  if (seed.loading) return <Tag>Identifying…</Tag>;
   const b = badge(seed);
-  const guidance = taskGuidance(seed, b.type);
+  return <Tag tone={STATUS_TONE[b.type]}>{statusLabel(b.t)}</Tag>;
+}
 
+const hasVariety = seed => seed.variety && seed.variety !== "Standard";
+
+function PlantRow({ seed, zoneName }) {
   return (
-    <div
-      className="card animate-fade-up"
-      onClick={onClick}
-      style={{ cursor: "pointer", transition: "box-shadow 0.15s ease" }}
-      onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.1)"}
-      onMouseLeave={e => e.currentTarget.style.boxShadow = ""}
-    >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-md)" }}>
-        <span style={{ fontSize: "2.5rem", lineHeight: 1 }}>{seed.emoji || "🌱"}</span>
-        <span style={{
-          fontSize: "var(--text-nav)",
-          fontWeight: 700,
-          color: b.color,
-          textTransform: "uppercase",
-          letterSpacing: "0.06em",
-          border: `1.5px solid ${b.color}`,
-          borderRadius: "100px",
-          padding: "2px var(--space-sm)",
-        }}>
-          {b.t}
+    <Link to={`/seeds/${seed.id}`} className="ui-list-row ui-list-row--link">
+      <span aria-hidden="true" style={{ fontSize: "1.25rem", width: 28, textAlign: "center", flexShrink: 0 }}>
+        {seed.fetchError ? "⚠️" : seed.emoji || "🌱"}
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span className="ui-subtitle ui-truncate">{seed.name}</span>
+        <span className="ui-small ui-truncate">
+          {[hasVariety(seed) && seed.variety, seed.daysToMaturity, seed.enriching && "Adding details…"].filter(Boolean).join(" · ")}
         </span>
-      </div>
-
-      <h2 className="h3" style={{ marginBottom: "4px" }}>{seed.name}</h2>
-      {seed.variety && seed.variety !== "Standard" && (
-        <p style={{
-          fontFamily: "var(--font-serif)",
-          fontStyle: "italic",
-          color: "var(--color-green)",
-          fontSize: "var(--text-small)",
-          margin: "0 0 var(--space-sm)",
-        }}>
-          '{seed.variety}'
-        </p>
+      </span>
+      <span className="ui-small hide-on-phone ui-truncate" style={{ width: 140 }}>{zoneName || "No zone"}</span>
+      <span className="ui-small hide-on-phone ui-truncate" style={{ width: 130 }}>{seed.category}</span>
+      {seed.color && COLOR_DOTS[seed.color] && (
+        <span className="ui-dot hide-on-phone" style={{ background: COLOR_DOTS[seed.color] }} title={seed.color} />
       )}
-
-      <div style={{
-        display: "flex",
-        gap: "var(--space-md)",
-        fontSize: "var(--text-nav)",
-        color: "var(--color-text-muted)",
-        marginTop: "var(--space-sm)",
-        flexWrap: "wrap",
-      }}>
-        {seed.daysToMaturity && <span>⏱ {seed.daysToMaturity}</span>}
-        {seed.brand && <span>🏷 {seed.brand}</span>}
-      </div>
-
-      {guidance && (
-        <p style={{
-          marginTop: "var(--space-md)",
-          fontSize: "var(--text-small)",
-          color: "var(--color-text-muted)",
-          lineHeight: 1.5,
-          borderTop: "1px solid var(--color-border)",
-          paddingTop: "var(--space-md)",
-          margin: "var(--space-md) 0 0",
-        }}>
-          {guidance}
-        </p>
-      )}
-
-      {seed.enriching && (
-        <div style={{ height: 3, background: "var(--color-border)", borderRadius: 2, overflow: "hidden", marginTop: "var(--space-md)" }}>
-          <div className="animate-pulse" style={{ height: "100%", width: "65%", background: "var(--color-green)", borderRadius: 2 }} />
-        </div>
-      )}
-    </div>
+      <StatusTag seed={seed} />
+      <Icon name="chevronRight" width="16" height="16" style={{ color: "var(--color-text-subtle)", flexShrink: 0 }} />
+    </Link>
   );
 }
 
-// ─── ViewToggle ───────────────────────────────────────────────────────────────
+// ─── Grid card ────────────────────────────────────────────────────────────────
 
-function ViewToggle({ view, onChange }) {
-  const btnStyle = (active) => ({
-    minHeight: 36,
-    width: 36,
-    padding: 0,
-    background: active ? "var(--color-green-pale)" : "transparent",
-    color: active ? "var(--color-green)" : "var(--color-text-muted)",
-    border: "none",
-    fontSize: "1.1rem",
-    cursor: "pointer",
-    borderRadius: 0,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    transition: "background 0.1s ease, color 0.1s ease",
-  });
-
+function PlantCard({ seed }) {
+  const guidance = !seed.loading && !seed.fetchError && taskGuidance(seed, badge(seed).type);
+  const details = [seed.daysToMaturity, seed.brand].filter(Boolean).join(" · ");
   return (
-    <div style={{
-      display: "flex",
-      border: "1.5px solid var(--color-border)",
-      borderRadius: "var(--radius-sm)",
-      overflow: "hidden",
-      flexShrink: 0,
-    }}>
-      <button
-        onClick={() => onChange("list")}
-        style={btnStyle(view === "list")}
-        title="List view"
-        aria-label="List view"
-      >
-        ☰
-      </button>
-      <button
-        onClick={() => onChange("grid")}
-        style={btnStyle(view === "grid")}
-        title="Grid view"
-        aria-label="Grid view"
-      >
-        ⊞
-      </button>
-    </div>
-  );
-}
-
-// ─── FilterSelect ─────────────────────────────────────────────────────────────
-
-function FilterSelect({ label, value, onChange, options }) {
-  return (
-    <SelectWithCaret
-      value={value}
-      label={`Filter by ${label.toLowerCase()}`}
-      onChange={e => onChange(e.target.value)}
-      selectStyle={{
-        minHeight: 36,
-        padding: "0 2rem 0 var(--space-md)",
-        fontSize: "var(--text-small)",
-        border: value ? "2px solid var(--color-green)" : "2px solid var(--color-border)",
-        borderRadius: "var(--radius-sm)",
-        background: value ? "var(--color-green-pale)" : "var(--color-bg)",
-        color: value ? "var(--color-green)" : "var(--color-text)",
-        fontWeight: value ? 600 : 400,
-      }}
-    >
-      <option value="">{label}</option>
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </SelectWithCaret>
-  );
-}
-
-// ─── FilterChip ───────────────────────────────────────────────────────────────
-
-function FilterChip({ label, dotColor, isWhite, onRemove }) {
-  return (
-    <span style={{
-      display: "inline-flex",
-      alignItems: "center",
-      gap: "var(--space-xs)",
-      background: "var(--color-green-pale)",
-      color: "var(--color-green)",
-      border: "1.5px solid var(--color-green-light)",
-      borderRadius: "100px",
-      padding: "2px var(--space-sm)",
-      fontSize: "var(--text-small)",
-      fontWeight: 500,
-    }}>
-      {dotColor && (
-        <span style={{
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          background: dotColor,
-          border: isWhite ? "1px solid var(--color-border)" : "none",
-          flexShrink: 0,
-        }} />
-      )}
-      {label}
-      <button
-        onClick={e => { e.stopPropagation(); onRemove(); }}
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: "0 0 0 2px",
-          minHeight: "auto",
-          fontSize: "1rem",
-          color: "var(--color-green)",
-          lineHeight: 1,
-          fontWeight: 400,
-        }}
-        aria-label={`Remove ${label} filter`}
-      >
-        ×
-      </button>
-    </span>
+    <Card as={Link} to={`/seeds/${seed.id}`} interactive className="ui-stack" style={{ gap: "var(--space-2)", flex: 1 }}>
+      <span className="ui-row" style={{ justifyContent: "space-between", flexWrap: "nowrap" }}>
+        <span aria-hidden="true" style={{ fontSize: "1.75rem", lineHeight: 1 }}>{seed.fetchError ? "⚠️" : seed.emoji || "🌱"}</span>
+        <StatusTag seed={seed} />
+      </span>
+      <span>
+        <span className="ui-subtitle">{seed.name}</span>
+        {hasVariety(seed) && <span className="ui-small">{seed.variety}</span>}
+      </span>
+      {details && <span className="ui-small ui-truncate">{details}</span>}
+      {guidance && <span className="ui-small ui-clamp-2" style={{ color: "var(--color-text)" }}>{guidance}</span>}
+    </Card>
   );
 }
