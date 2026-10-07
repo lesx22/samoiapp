@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
-import { badge, getActiveTasks } from "../data/garden";
+import { getActiveTasks } from "../data/garden";
 import { supabase } from "../lib/supabase";
 
 const NAV_ITEMS = [
@@ -20,13 +20,13 @@ export default function Nav({ session }) {
 
   return (
     <>
-      <TopNav seeds={seeds} urgentCount={urgentCount} session={session} />
+      <TopNav urgentCount={urgentCount} session={session} />
       <BottomNav urgentCount={urgentCount} />
     </>
   );
 }
 
-function TopNav({ seeds, urgentCount, session }) {
+function TopNav({ urgentCount, session }) {
   const userEmail = session?.user?.email ?? "";
   const userLabel = userEmail.split("@")[0];
   return (

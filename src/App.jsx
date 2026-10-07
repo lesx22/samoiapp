@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SeedsProvider, useSeedsContext } from "./context/SeedsContext";
 import { supabase } from "./lib/supabase";
@@ -59,14 +59,15 @@ function AppShell({ session }) {
 export default function App() {
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [isRecovery, setIsRecovery] = useState(false);
+  // Recovery links contain #type=recovery; read it before the first render
+  const [isRecovery, setIsRecovery] = useState(
+    () => new URLSearchParams(window.location.hash.slice(1)).get("type") === "recovery"
+  );
+  // The auth listener is created once, so it reads recovery mode from a ref, not stale state
+  const isRecoveryRef = useRef(isRecovery);
+  useEffect(() => { isRecoveryRef.current = isRecovery; }, [isRecovery]);
 
   useEffect(() => {
-    // Check URL hash immediately — recovery links contain #type=recovery
-    const hashParams = new URLSearchParams(window.location.hash.slice(1));
-    if (hashParams.get("type") === "recovery") {
-      setIsRecovery(true);
-    }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -84,7 +85,7 @@ export default function App() {
         setSession(session);
         setAuthLoading(false);
       } else {
-        if (!isRecovery) {
+        if (!isRecoveryRef.current) {
           setSession(session);
           setAuthLoading(false);
         }

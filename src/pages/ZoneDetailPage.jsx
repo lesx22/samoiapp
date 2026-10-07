@@ -22,7 +22,7 @@ export default function ZoneDetailPage() {
     if (!zoneId) return;
     loadZoneTasks(zoneId);
     loadZoneDiary(zoneId);
-  }, [zoneId]);
+  }, [zoneId, loadZoneTasks, loadZoneDiary]);
 
   if (!zone) {
     return (
@@ -279,9 +279,11 @@ function ZoneDiaryTab({ zoneId, zone, seeds, getZoneDiaryEntries, addZoneDiaryEn
   const [saving, setSaving] = useState(false);
   const zoneEntries = getZoneDiaryEntries(zoneId);
 
+  // A string key, so the effect re-runs when the set of plants changes, not on every render
+  const seedIds = seeds.map(s => s.id).join(",");
   useEffect(() => {
-    seeds.forEach(s => loadDiaryEntries(s.id));
-  }, [seeds.length]);
+    if (seedIds) seedIds.split(",").forEach(id => loadDiaryEntries(id));
+  }, [seedIds, loadDiaryEntries]);
 
   const plantEntries = seeds.flatMap(seed =>
     getDiaryEntries(seed.id).map(e => ({ ...e, sourceName: seed.name, sourceEmoji: seed.emoji || "🌱", isPlant: true }))

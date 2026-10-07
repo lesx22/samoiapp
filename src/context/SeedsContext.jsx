@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "../lib/supabase";
 
 const GARDEN_NAME = "Grand Samoï";
@@ -111,6 +111,9 @@ export function SeedsProvider({ children }) {
   const [zoneDiary, setZoneDiary] = useState({});
   const [gardenBgImage, setGardenBgImage] = useState(null);
   const [plantCustomTasks, setPlantCustomTasks] = useState({});
+  // Keys like "diary:<id>" for data already fetched, so the load functions below
+  // can stay stable (pages list them as effect dependencies without re-running)
+  const loadedRef = useRef(new Set());
 
   // Load garden, zones, plants, and task completions on mount
   useEffect(() => {
@@ -227,14 +230,16 @@ export function SeedsProvider({ children }) {
 
   // ── Diary ───────────────────────────────────────────────────────────────────
 
-  async function loadDiaryEntries(seedId) {
-    if (diary[seedId] !== undefined) return; // already loaded
+  const loadDiaryEntries = useCallback(async seedId => {
+    const key = `diary:${seedId}`;
+    if (loadedRef.current.has(key)) return;
+    loadedRef.current.add(key);
     const { data, error } = await supabase
       .from("diary_entries")
       .select("*")
       .eq("plant_id", seedId)
       .order("created_at", { ascending: false });
-    if (error) { console.error("loadDiaryEntries:", error.message); return; }
+    if (error) { console.error("loadDiaryEntries:", error.message); loadedRef.current.delete(key); return; }
     setDiary(prev => ({
       ...prev,
       [seedId]: (data || []).map(r => ({
@@ -245,7 +250,7 @@ export function SeedsProvider({ children }) {
         userId: r.user_id ?? null,
       })),
     }));
-  }
+  }, []);
 
   async function addDiaryEntry(seedId, entry) {
     const today = new Date().toISOString().slice(0, 10);
@@ -306,12 +311,14 @@ export function SeedsProvider({ children }) {
 
   // ── Plant Custom Tasks ───────────────────────────────────────────────────────
 
-  async function loadPlantTasks(plantId) {
-    if (plantCustomTasks[plantId] !== undefined) return;
+  const loadPlantTasks = useCallback(async plantId => {
+    const key = `plantTasks:${plantId}`;
+    if (loadedRef.current.has(key)) return;
+    loadedRef.current.add(key);
     const { data, error } = await supabase.from("plant_tasks").select("*").eq("plant_id", plantId).order("created_at");
-    if (error) { console.error("loadPlantTasks:", error.message); return; }
+    if (error) { console.error("loadPlantTasks:", error.message); loadedRef.current.delete(key); return; }
     setPlantCustomTasks(prev => ({ ...prev, [plantId]: (data || []).map(r => ({ id: r.id, title: r.title, description: r.description ?? null, dueDate: r.due_date ?? null, completed: r.completed })) }));
-  }
+  }, []);
 
   async function addPlantTask(plantId, { title, description, dueDate }) {
     const { data, error } = await supabase.from("plant_tasks").insert({ plant_id: plantId, garden_id: gardenId, title, description: description || null, due_date: dueDate || null, completed: false }).select().single();
@@ -338,12 +345,14 @@ export function SeedsProvider({ children }) {
 
   // ── Zone Tasks ───────────────────────────────────────────────────────────────
 
-  async function loadZoneTasks(zoneId) {
-    if (zoneTasks[zoneId] !== undefined) return;
+  const loadZoneTasks = useCallback(async zoneId => {
+    const key = `zoneTasks:${zoneId}`;
+    if (loadedRef.current.has(key)) return;
+    loadedRef.current.add(key);
     const { data, error } = await supabase.from("zone_tasks").select("*").eq("zone_id", zoneId).order("created_at");
-    if (error) { console.error("loadZoneTasks:", error.message); return; }
+    if (error) { console.error("loadZoneTasks:", error.message); loadedRef.current.delete(key); return; }
     setZoneTasks(prev => ({ ...prev, [zoneId]: (data || []).map(r => ({ id: r.id, title: r.title, description: r.description ?? null, dueDate: r.due_date ?? null, completed: r.completed })) }));
-  }
+  }, []);
 
   async function addZoneTask(zoneId, { title, description, dueDate }) {
     const { data, error } = await supabase.from("zone_tasks").insert({ zone_id: zoneId, garden_id: gardenId, title, description: description || null, due_date: dueDate || null, completed: false }).select().single();
@@ -370,12 +379,14 @@ export function SeedsProvider({ children }) {
 
   // ── Zone Diary ───────────────────────────────────────────────────────────────
 
-  async function loadZoneDiary(zoneId) {
-    if (zoneDiary[zoneId] !== undefined) return;
+  const loadZoneDiary = useCallback(async zoneId => {
+    const key = `zoneDiary:${zoneId}`;
+    if (loadedRef.current.has(key)) return;
+    loadedRef.current.add(key);
     const { data, error } = await supabase.from("zone_diary_entries").select("*").eq("zone_id", zoneId).order("created_at", { ascending: false });
-    if (error) { console.error("loadZoneDiary:", error.message); return; }
+    if (error) { console.error("loadZoneDiary:", error.message); loadedRef.current.delete(key); return; }
     setZoneDiary(prev => ({ ...prev, [zoneId]: (data || []).map(r => ({ id: r.id, date: r.date, text: r.text, photo: r.photo_url ?? null })) }));
-  }
+  }, []);
 
   async function addZoneDiaryEntry(zoneId, { text, photo }) {
     const today = new Date().toISOString().slice(0, 10);
@@ -471,6 +482,7 @@ export function SeedsProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook lives beside its provider
 export function useSeedsContext() {
   const ctx = useContext(SeedsContext);
   if (!ctx) throw new Error("useSeedsContext must be used inside SeedsProvider");

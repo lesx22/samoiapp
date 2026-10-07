@@ -1,3 +1,7 @@
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps --
+   Known issue: this modal drives its steps through effects. It is being rebuilt
+   as part of the image journey (backlog P2), which moves this work into event
+   handlers. Don't patch the effects piecemeal before then. */
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";

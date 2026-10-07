@@ -152,10 +152,9 @@ export default function SeedsPage({ onUpload }) {
       r.sort((a, b) => (a.zoneId || "zzz").localeCompare(b.zoneId || "zzz"));
     }
     return r;
-  }, [seeds, search, filterCategory, filterColor, filterStatus, filterZone, sort]);
+  }, [seeds, search, filterCategory, filterPlantType, filterColor, filterStatus, filterZone, sort]);
 
   const activeFilterCount = [filterCategory, filterPlantType, filterColor, filterStatus, filterZone].filter(Boolean).length;
-  const hasAnyFilter = activeFilterCount > 0 || search.trim().length > 0;
 
   function handleViewToggle(v) {
     setView(v);

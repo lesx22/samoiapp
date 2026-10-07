@@ -249,7 +249,7 @@ export async function fromURL(url) {
 export async function groupPhotos(photos) {
   // photos: [{ b64, mime, filename }]
   const content = [
-    ...photos.map((p, i) => ({
+    ...photos.map(p => ({
       type: "image",
       source: { type: "base64", media_type: normaliseMime(p.mime, p.filename), data: p.b64 },
     })),
