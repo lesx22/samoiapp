@@ -43,32 +43,43 @@ export function badge(seed) {
   return { t: "SEASON DONE", color: "var(--color-text-muted)" };
 }
 
+// Days since a month window ended (0 while it's still open). Months are 1-12.
+export function daysOverdue(months, today = new Date()) {
+  const lastDay = new Date(today.getFullYear(), Math.max(...months), 0); // day 0 = last day of that month
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const ms = startOfToday.getTime() - lastDay.getTime();
+  return Math.max(0, Math.round(ms / 86400000));
+}
+
+// An overdue task older than this was probably done but not ticked off
+export const PROBABLY_DONE_AFTER_DAYS = 14;
+
 // Returns all actionable tasks for a seed: current-month tasks + overdue tasks
 // taskType: "sow" | "transplant" | "harvest"
-// status: "current" | "overdue"
-export function getActiveTasks(seed) {
-  const m = TODAY_M;
+// status: "current" | "overdue"; overdue tasks also carry daysOverdue
+export function getActiveTasks(seed, today = new Date()) {
+  const m = today.getMonth() + 1;
   const tasks = [];
 
   // Sow
   if (seed.sowMonths?.includes(m)) {
     tasks.push({ type: "sow", label: "Sow now", status: "current", color: "var(--color-green)" });
   } else if (seed.sowMonths?.length && Math.max(...seed.sowMonths) < m) {
-    tasks.push({ type: "sow", label: "Overdue: Sow", status: "overdue", color: "var(--color-error)" });
+    tasks.push({ type: "sow", label: "Overdue: Sow", status: "overdue", color: "var(--color-error)", daysOverdue: daysOverdue(seed.sowMonths, today) });
   }
 
   // Transplant
   if (seed.transplantMonths?.includes(m)) {
     tasks.push({ type: "transplant", label: "Transplant now", status: "current", color: "#1d4ed8" });
   } else if (seed.transplantMonths?.length && Math.max(...seed.transplantMonths) < m) {
-    tasks.push({ type: "transplant", label: "Overdue: Transplant", status: "overdue", color: "var(--color-error)" });
+    tasks.push({ type: "transplant", label: "Overdue: Transplant", status: "overdue", color: "var(--color-error)", daysOverdue: daysOverdue(seed.transplantMonths, today) });
   }
 
   // Harvest
   if (seed.harvestMonths?.includes(m)) {
     tasks.push({ type: "harvest", label: "Harvest now", status: "current", color: "#b45309" });
   } else if (seed.harvestMonths?.length && Math.max(...seed.harvestMonths) < m) {
-    tasks.push({ type: "harvest", label: "Overdue: Harvest", status: "overdue", color: "var(--color-error)" });
+    tasks.push({ type: "harvest", label: "Overdue: Harvest", status: "overdue", color: "var(--color-error)", daysOverdue: daysOverdue(seed.harvestMonths, today) });
   }
 
   return tasks;
@@ -93,4 +104,13 @@ export function taskGuidance(seed, type) {
   }
   if (type === "harvest") return seed.harvest?.signs || null;
   return null;
+}
+
+// Groups { seed, task } items by the plant's zone, in the garden's zone order.
+// Plants without a zone go last, under "No zone".
+export function groupByZone(items, zones) {
+  const groups = new Map(zones.map(z => [z.id, { zone: z, items: [] }]));
+  const noZone = { zone: null, items: [] };
+  for (const item of items) (groups.get(item.seed.zoneId) || noZone).items.push(item);
+  return [...groups.values(), noZone].filter(g => g.items.length > 0);
 }

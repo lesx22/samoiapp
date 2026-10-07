@@ -306,6 +306,21 @@ export function SeedsProvider({ children }) {
     }
   }
 
+  // Ticks many calendar tasks at once with a single database write
+  async function markTasksDone(items) {
+    const todo = items.filter(({ seedId, taskType }) => !completedTasks.has(`${seedId}-${taskType}`));
+    if (todo.length === 0) return;
+    setCompletedTasks(prev => {
+      const next = new Set(prev);
+      for (const { seedId, taskType } of todo) next.add(`${seedId}-${taskType}`);
+      return next;
+    });
+    const { error } = await supabase
+      .from("task_completions")
+      .upsert(todo.map(({ seedId, taskType }) => ({ plant_id: seedId, task_type: taskType })));
+    if (error) console.error("markTasksDone:", error.message);
+  }
+
   function isTaskDone(seedId, taskType) {
     return completedTasks.has(`${seedId}-${taskType}`);
   }
@@ -471,7 +486,7 @@ export function SeedsProvider({ children }) {
       addSeed, addSeeds, updateSeed, removeSeed, getSeed,
       assignZone, getSeedsByZone, getZone,
       loadDiaryEntries, addDiaryEntry, getDiaryEntries,
-      toggleTask, isTaskDone,
+      toggleTask, isTaskDone, markTasksDone,
       loadPlantTasks, addPlantTask, togglePlantTask, deletePlantTask, getPlantTasks,
       loadZoneTasks, addZoneTask, toggleZoneTask, deleteZoneTask, getZoneTasks,
       loadZoneDiary, addZoneDiaryEntry, deleteZoneDiaryEntry, getZoneDiaryEntries,

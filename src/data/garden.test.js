@@ -30,3 +30,36 @@ describe("taskGuidance", () => {
     expect(taskGuidance(celosia, undefined)).toBeNull();
   });
 });
+
+import { daysOverdue, getActiveTasks, groupByZone } from "./garden";
+
+describe("daysOverdue", () => {
+  const oct7 = new Date(2026, 9, 7);
+  it("counts days since the last month of the window ended", () => {
+    expect(daysOverdue([9], oct7)).toBe(7);      // September ended 30 Sep
+    expect(daysOverdue([4, 5], oct7)).toBe(129); // May ended 31 May
+  });
+  it("is 0 while the window is still open", () => {
+    expect(daysOverdue([10], oct7)).toBe(0);
+  });
+});
+
+describe("getActiveTasks", () => {
+  it("marks tasks overdue with how many days, using the date it's given", () => {
+    const tasks = getActiveTasks({ sowMonths: [4], harvestMonths: [10] }, new Date(2026, 9, 7));
+    expect(tasks).toEqual([
+      expect.objectContaining({ type: "sow", status: "overdue", daysOverdue: 160 }), // April ended 30 Apr
+      expect.objectContaining({ type: "harvest", status: "current" }),
+    ]);
+  });
+});
+
+describe("groupByZone", () => {
+  it("follows the garden's zone order and puts plants without a zone last", () => {
+    const zones = [{ id: "a", name: "Potager" }, { id: "b", name: "Orchard" }];
+    const item = (id, zoneId) => ({ seed: { id, zoneId }, task: { type: "sow" } });
+    const groups = groupByZone([item(1, null), item(2, "b"), item(3, "a"), item(4, "b")], zones);
+    expect(groups.map(g => g.zone?.name ?? "No zone")).toEqual(["Potager", "Orchard", "No zone"]);
+    expect(groups[1].items.map(i => i.seed.id)).toEqual([2, 4]);
+  });
+});

@@ -351,6 +351,58 @@ label {
 @media (prefers-reduced-motion: reduce) {
   .disclosure::after { transition: none; }
 }
+/* ─── Today: tasks grouped by area ─────────────────────────────────────────── */
+
+.task-list { display: flex; flex-direction: column; gap: var(--space-sm); }
+
+/* Two lines of guidance on a task card; the plant page has the full text */
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.zone-group + .zone-group { margin-top: var(--space-lg); }
+.zone-group__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  margin: 0 0 var(--space-sm);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  font-weight: 700;
+}
+.zone-group__count {
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.section-label {
+  margin: 0 0 var(--space-md);
+  font-family: var(--font-sans);
+  font-size: var(--text-nav);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.stale-group {
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+}
+.stale-group + .stale-group { margin-top: var(--space-sm); }
+.stale-group__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+.stale-group__toggle { margin-top: 0; padding: 0; background: none; color: var(--color-text); font-size: var(--text-body); text-align: left; }
+.stale-group__clear { min-height: 40px; padding: 0 var(--space-md); font-size: var(--text-small); }
 
 /* ─── Plant chat ────────────────────────────────────────────────────────────── */
 
