@@ -102,12 +102,13 @@ export default function GardenPage() {
   const onMouseMove = useCallback((e) => onMove(e.clientX, e.clientY), [onMove]);
   const onTouchMove = useCallback((e) => { e.preventDefault(); onMove(e.touches[0].clientX, e.touches[0].clientY); }, [onMove]);
 
-  const stopDrag = useCallback(() => {
+  // Named function so it can remove itself as a listener
+  const stopDrag = useCallback(function stop() {
     dragRef.current = null;
     document.removeEventListener("mousemove", onMouseMove);
-    document.removeEventListener("mouseup", stopDrag);
+    document.removeEventListener("mouseup", stop);
     document.removeEventListener("touchmove", onTouchMove);
-    document.removeEventListener("touchend", stopDrag);
+    document.removeEventListener("touchend", stop);
   }, [onMouseMove, onTouchMove]);
 
   function attachDrag(isTouch) {
@@ -469,7 +470,7 @@ export default function GardenPage() {
           zone={zoneForm.zone}
           onSave={async (data) => {
             if (zoneForm.mode === "add") {
-              const newZone = await createZone({ ...data, hotspot: { left: "35%", top: "35%", width: "20%", height: "15%", rotate: 0 } });
+              await createZone({ ...data, hotspot: { left: "35%", top: "35%", width: "20%", height: "15%", rotate: 0 } });
             } else {
               await updateZone(zoneForm.zone.id, data);
             }

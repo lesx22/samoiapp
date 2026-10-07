@@ -17,14 +17,14 @@ export default function SeedDetailPage() {
 
   useEffect(() => {
     if (id) loadDiaryEntries(id);
-  }, [id]);
+  }, [id, loadDiaryEntries]);
   const [activeTab, setActiveTab] = useState(0);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [refetchModalOpen, setRefetchModalOpen] = useState(false);
 
   useEffect(() => {
     if (id) loadPlantTasks(id);
-  }, [id]);
+  }, [id, loadPlantTasks]);
   const seed = getSeed(id);
 
   if (!seed) {
@@ -190,7 +190,7 @@ export default function SeedDetailPage() {
       {activeTab === 0 && <OverviewTab seed={seed} assignZone={assignZone} />}
       {activeTab === 1 && <PlantTasksTab seedId={id} seed={seed} getPlantTasks={getPlantTasks} addPlantTask={addPlantTask} togglePlantTask={togglePlantTask} deletePlantTask={deletePlantTask} />}
       {activeTab === 2 && <TodayTab seed={seed} />}
-      {activeTab === 3 && <DiaryTab seedId={id} seed={seed} addDiaryEntry={addDiaryEntry} getDiaryEntries={getDiaryEntries} />}
+      {activeTab === 3 && <DiaryTab seedId={id} addDiaryEntry={addDiaryEntry} getDiaryEntries={getDiaryEntries} />}
       {activeTab === 4 && <ChatTab seed={seed} />}
 
       {editModalOpen && (
@@ -458,7 +458,7 @@ function TodayTab({ seed }) {
 
 // ─── Diary Tab ────────────────────────────────────────────────────────────────
 
-function DiaryTab({ seedId, seed, addDiaryEntry, getDiaryEntries }) {
+function DiaryTab({ seedId, addDiaryEntry, getDiaryEntries }) {
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const entries = getDiaryEntries(seedId);
