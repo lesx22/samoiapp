@@ -270,6 +270,88 @@ label {
   .hide-on-phone { display: none; }
 }
 
+/* ─── Fact grid and disclosures (Home) ──────────────────────────────────────── */
+
+.fact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
+  margin: 0;
+}
+.fact-grid dt {
+  font-size: var(--text-small);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+.fact-grid dd { margin: 0; font-size: var(--text-body); font-weight: 500; }
+@media (min-width: 768px) {
+  .fact-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* A text button that shows or hides more content, with a turning chevron */
+.disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+  padding: 0;
+  min-height: var(--touch-target);
+  background: none;
+  border: none;
+  color: var(--color-green);
+  font-size: var(--text-small);
+  font-weight: 600;
+  cursor: pointer;
+}
+.disclosure::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin: 0 4px 4px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.2s ease;
+}
+.disclosure[aria-expanded="true"]::after { transform: translateY(4px) rotate(-135deg); }
+.disclosure--heading {
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  margin-top: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+
+.check-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-md) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+.check-list li {
+  display: flex;
+  gap: var(--space-md);
+  font-size: var(--text-body);
+  line-height: 1.6;
+}
+.check-list li::before {
+  content: "✓";
+  color: var(--color-green);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .disclosure::after { transition: none; }
+}
+
 /* ─── Plant chat ────────────────────────────────────────────────────────────── */
 
 .chat { display: flex; flex-direction: column; }

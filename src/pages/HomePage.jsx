@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSeedsContext } from "../context/SeedsContext";
-import { LOC, getActiveTasks } from "../data/garden";
+import { LOC, GARDEN_FACTS, KEY_FACT_COUNT, NORMANDY_NOTES, getActiveTasks } from "../data/garden";
 import { TaskRow } from "./TodayPage";
 
 export default function HomePage({ onUpload }) {
   const { seeds, toggleTask, isTaskDone } = useSeedsContext();
   const navigate = useNavigate();
+  const [showAllFacts, setShowAllFacts] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
 
   // Flat list of pending tasks for the widget (max 3 shown)
   const allPending = seeds.flatMap(seed =>
@@ -14,6 +17,7 @@ export default function HomePage({ onUpload }) {
       .map(task => ({ seed, task }))
   );
   const todayPreview = allPending.slice(0, 3);
+  const facts = showAllFacts ? GARDEN_FACTS : GARDEN_FACTS.slice(0, KEY_FACT_COUNT);
 
   return (
     <div className="page">
@@ -27,46 +31,7 @@ export default function HomePage({ onUpload }) {
         </p>
       </div>
 
-      {/* Garden summary */}
-      <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
-        <h2 className="h3" style={{ marginBottom: "var(--space-md)" }}>Your Garden</h2>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "var(--space-md)",
-        }}>
-          {[
-            ["Location", LOC.name],
-            ["Zone", LOC.zone],
-            ["Season", LOC.season],
-            ["Plot", LOC.plot],
-            ["Last frost", LOC.lastFrost],
-            ["First frost", LOC.firstFrost],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <div style={{
-                fontSize: "var(--text-nav)",
-                fontWeight: 600,
-                color: "var(--color-text-muted)",
-                marginBottom: "2px",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}>
-                {label}
-              </div>
-              <div style={{
-                fontSize: "var(--text-body)",
-                color: "var(--color-text)",
-                fontWeight: 500,
-              }}>
-                {value}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Today widget */}
+      {/* Today widget: the most useful thing, so it comes first */}
       <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
         <div style={{
           display: "flex",
@@ -117,6 +82,48 @@ export default function HomePage({ onUpload }) {
           }}>
             +{allPending.length - 3} more tasks today
           </p>
+        )}
+      </div>
+
+      {/* Garden profile: key facts, the rest behind "More" */}
+      <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
+        <h2 className="h3" style={{ marginBottom: "var(--space-md)" }}>Your garden</h2>
+        <dl id="garden-facts" className="fact-grid">
+          {facts.map(({ key, label }) => (
+            <div key={key}>
+              <dt>{label}</dt>
+              <dd>{LOC[key]}</dd>
+            </div>
+          ))}
+        </dl>
+        <button
+          type="button"
+          className="disclosure"
+          aria-expanded={showAllFacts}
+          aria-controls="garden-facts"
+          onClick={() => setShowAllFacts(v => !v)}
+        >
+          {showAllFacts ? "Less" : "More about your garden"}
+        </button>
+      </div>
+
+      {/* Normandy growing notes, collapsed by default */}
+      <div className="card" style={{ marginBottom: "var(--space-lg)" }}>
+        <h2 className="h3" style={{ margin: 0 }}>
+          <button
+            type="button"
+            className="disclosure disclosure--heading"
+            aria-expanded={showNotes}
+            aria-controls="normandy-notes"
+            onClick={() => setShowNotes(v => !v)}
+          >
+            Normandy growing notes
+          </button>
+        </h2>
+        {showNotes && (
+          <ul id="normandy-notes" className="check-list">
+            {NORMANDY_NOTES.map(note => <li key={note}>{note}</li>)}
+          </ul>
         )}
       </div>
 
